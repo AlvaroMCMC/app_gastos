@@ -32,6 +32,8 @@ function ContextTester() {
     console.log(message);
   };
 
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
   const runTests = async () => {
     setRunning(true);
     setLogs([]);
@@ -39,9 +41,11 @@ function ContextTester() {
     log('\n=== FASE 2.1: Verificación del Context ===\n');
 
     try {
-      // Limpiar storage
+      // Limpiar storage y esperar reload
       log('🧹 Limpiando storage...');
       await clearStorage();
+      // Esperar a que el Context recargue
+      await delay(500);
       log('✓ Storage limpiado\n');
 
       // Test 1: Estado inicial
@@ -55,6 +59,7 @@ function ContextTester() {
       // Test 2: Crear período
       log('📋 Test 2: Crear período');
       await createPeriod('Test Período', 'SOL');
+      await delay(300); // Esperar actualización de estado
       log(`  Períodos después: ${periods.length}`);
       log(`  Nombre: ${periods[0]?.name}`);
       log(`  Moneda: ${periods[0]?.defaultCurrency}`);
@@ -66,6 +71,7 @@ function ContextTester() {
         log('📋 Test 3: Añadir gasto');
         const periodId = periods[0].id;
         await addExpense(periodId, 'Supermercado', 150.50);
+        await delay(300);
         log(`  Gastos: ${periods[0].expenses.length}`);
         log(`  Descripción: ${periods[0].expenses[0]?.description}`);
         log(`  Monto: ${periods[0].expenses[0]?.amount}`);
@@ -75,7 +81,9 @@ function ContextTester() {
         // Test 4: Añadir más gastos
         log('📋 Test 4: Añadir múltiples gastos');
         await addExpense(periodId, 'Transporte', 50);
+        await delay(200);
         await addExpense(periodId, 'Restaurante', 85.75);
+        await delay(300);
         log(`  Total gastos: ${periods[0].expenses.length}`);
         const total = periods[0].expenses.reduce((sum, e) => sum + e.amount, 0);
         log(`  Suma total: S/ ${total.toFixed(2)}`);
@@ -86,6 +94,7 @@ function ContextTester() {
         log('📋 Test 5: Eliminar gasto');
         const expenseId = periods[0].expenses[0].id;
         await deleteExpense(periodId, expenseId);
+        await delay(300);
         log(`  Gastos después: ${periods[0].expenses.length}`);
         const test5 = periods[0].expenses.length === 2;
         log(`  Resultado: ${test5 ? 'PASS ✓' : 'FAIL ✗'}\n`);
@@ -94,6 +103,7 @@ function ContextTester() {
         log('📋 Test 6: Cambiar moneda');
         log(`  Moneda antes: ${periods[0].defaultCurrency}`);
         await updatePeriodCurrency(periodId, 'USD');
+        await delay(300);
         log(`  Moneda después: ${periods[0].defaultCurrency}`);
         const test6 = periods[0].defaultCurrency === 'USD';
         log(`  Resultado: ${test6 ? 'PASS ✓' : 'FAIL ✗'}\n`);
@@ -102,18 +112,25 @@ function ContextTester() {
       // Test 7: Crear múltiples períodos
       log('📋 Test 7: Crear múltiples períodos');
       await createPeriod('Diciembre 2025', 'BRL');
+      await delay(200);
       await createPeriod('Enero 2026', 'SOL');
+      await delay(300);
       log(`  Total períodos: ${periods.length}`);
       const test7 = periods.length === 3;
       log(`  Resultado: ${test7 ? 'PASS ✓' : 'FAIL ✗'}\n`);
 
       // Test 8: Eliminar período
       log('📋 Test 8: Eliminar período');
-      const periodToDelete = periods[1].id;
-      await deletePeriod(periodToDelete);
-      log(`  Períodos después: ${periods.length}`);
-      const test8 = periods.length === 2;
-      log(`  Resultado: ${test8 ? 'PASS ✓' : 'FAIL ✗'}\n`);
+      if (periods.length >= 2) {
+        const periodToDelete = periods[1].id;
+        await deletePeriod(periodToDelete);
+        await delay(300);
+        log(`  Períodos después: ${periods.length}`);
+        const test8 = periods.length === 2;
+        log(`  Resultado: ${test8 ? 'PASS ✓' : 'FAIL ✗'}\n`);
+      } else {
+        log(`  Error: No hay suficientes períodos para eliminar\n`);
+      }
 
       log('=== TESTS COMPLETADOS ===');
       log(`Total períodos: ${periods.length}`);
