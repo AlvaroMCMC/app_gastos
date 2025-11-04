@@ -1,5 +1,5 @@
 /**
- * Componente para ejecutar tests de las Fases 1.1 y 1.2
+ * Componente para ejecutar tests de las Fases 1.1, 1.2 y 1.3
  *
  * Uso: Importar este componente en cualquier pantalla para ejecutar los tests
  */
@@ -8,8 +8,9 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Button } from 'react-native';
 import { runAllPhase11Tests } from './phase1.1-verification';
 import { runAllPhase12Tests } from './phase1.2-verification';
+import { runAllPhase13Tests } from './phase1.3-verification';
 
-type TestPhase = '1.1' | '1.2' | 'all';
+type TestPhase = '1.1' | '1.2' | '1.3' | 'all';
 
 export default function TestRunner() {
   const [running, setRunning] = useState(false);
@@ -38,6 +39,9 @@ export default function TestRunner() {
       if (phase === '1.2' || phase === 'all') {
         runAllPhase12Tests();
       }
+      if (phase === '1.3' || phase === 'all') {
+        await runAllPhase13Tests();
+      }
     } catch (error) {
       logs.push(`ERROR: ${error}`);
     }
@@ -53,19 +57,24 @@ export default function TestRunner() {
     <View style={styles.container}>
       <Text style={styles.title}>Test Runner</Text>
 
-      <View style={styles.buttonContainer}>
+      <View style={styles.buttonRow}>
         <Button
-          title={running ? "Ejecutando..." : "Fase 1.1"}
+          title={running ? "..." : "1.1"}
           onPress={() => runTests('1.1')}
           disabled={running}
         />
         <Button
-          title={running ? "Ejecutando..." : "Fase 1.2"}
+          title={running ? "..." : "1.2"}
           onPress={() => runTests('1.2')}
           disabled={running}
         />
         <Button
-          title={running ? "Ejecutando..." : "Todas las Fases"}
+          title={running ? "..." : "1.3"}
+          onPress={() => runTests('1.3')}
+          disabled={running}
+        />
+        <Button
+          title={running ? "..." : "Todas"}
           onPress={() => runTests('all')}
           disabled={running}
         />
@@ -94,10 +103,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  buttonContainer: {
+  buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    gap: 10,
+    gap: 5,
     marginBottom: 10,
   },
   resultsContainer: {
