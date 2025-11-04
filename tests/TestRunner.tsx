@@ -1,18 +1,21 @@
 /**
- * Componente para ejecutar tests de la Fase 1.1
+ * Componente para ejecutar tests de las Fases 1.1 y 1.2
  *
  * Uso: Importar este componente en cualquier pantalla para ejecutar los tests
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Button } from 'react-native';
 import { runAllPhase11Tests } from './phase1.1-verification';
+import { runAllPhase12Tests } from './phase1.2-verification';
+
+type TestPhase = '1.1' | '1.2' | 'all';
 
 export default function TestRunner() {
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState<string[]>([]);
 
-  const runTests = async () => {
+  const runTests = async (phase: TestPhase) => {
     setRunning(true);
     setResults([]);
 
@@ -29,7 +32,12 @@ export default function TestRunner() {
     };
 
     try {
-      await runAllPhase11Tests();
+      if (phase === '1.1' || phase === 'all') {
+        await runAllPhase11Tests();
+      }
+      if (phase === '1.2' || phase === 'all') {
+        runAllPhase12Tests();
+      }
     } catch (error) {
       logs.push(`ERROR: ${error}`);
     }
@@ -43,13 +51,25 @@ export default function TestRunner() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Phase 1.1 Test Runner</Text>
+      <Text style={styles.title}>Test Runner</Text>
 
-      <Button
-        title={running ? "Ejecutando tests..." : "Ejecutar Tests de Fase 1.1"}
-        onPress={runTests}
-        disabled={running}
-      />
+      <View style={styles.buttonContainer}>
+        <Button
+          title={running ? "Ejecutando..." : "Fase 1.1"}
+          onPress={() => runTests('1.1')}
+          disabled={running}
+        />
+        <Button
+          title={running ? "Ejecutando..." : "Fase 1.2"}
+          onPress={() => runTests('1.2')}
+          disabled={running}
+        />
+        <Button
+          title={running ? "Ejecutando..." : "Todas las Fases"}
+          onPress={() => runTests('all')}
+          disabled={running}
+        />
+      </View>
 
       <ScrollView style={styles.resultsContainer}>
         {results.map((line, index) => (
@@ -73,6 +93,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: 10,
+    marginBottom: 10,
   },
   resultsContainer: {
     marginTop: 20,
