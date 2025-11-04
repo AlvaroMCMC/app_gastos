@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, ScrollView } from 'react-native';
 
 import { Collapsible } from '@/components/ui/collapsible';
 import { ExternalLink } from '@/components/external-link';
@@ -9,31 +9,34 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 import TestRunner from '@/tests/TestRunner';
+import Phase21TestRunner from '@/tests/phase2.1-verification-simple';
 
 export default function TabTwoScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
+    <ScrollView style={{ flex: 1 }}>
       <ThemedView style={styles.titleContainer}>
         <ThemedText
           type="title"
           style={{
             fontFamily: Fonts.rounded,
           }}>
-          Explore - Phase 1.1 Tests
+          Tests de Desarrollo
         </ThemedText>
       </ThemedView>
-      <ThemedText>Verificación de dependencias instaladas en Fase 1.1</ThemedText>
 
-      <TestRunner />
+      <ThemedView style={{ padding: 20 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 1: Tests de Infraestructura
+        </ThemedText>
+        <TestRunner />
+      </ThemedView>
+
+      <ThemedView style={{ padding: 20, paddingTop: 0 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 2.1: Tests de Context
+        </ThemedText>
+        <Phase21TestRunner />
+      </ThemedView>
       <Collapsible title="File-based routing">
         <ThemedText>
           This app has two screens:{' '}
@@ -97,7 +100,7 @@ export default function TabTwoScreen() {
           ),
         })}
       </Collapsible>
-    </ParallaxScrollView>
+    </ScrollView>
   );
 }
 
