@@ -30,14 +30,20 @@ export default function Phase31Verification() {
     try {
       // Test 1: Estado inicial (limpiar para empezar)
       log('📋 Test 1: Preparar estado inicial');
+      log('  Limpiando storage...');
       await clearStorage();
+      log('  Recargando períodos...');
       await context.reloadPeriods();
-      await delay(1000);
+      await delay(2000); // Delay más largo para asegurar que el Context se actualice
 
       const initialPeriods = context.periods;
-      log(`  Períodos iniciales: ${initialPeriods.length}`);
+      log(`  Períodos después de limpiar: ${initialPeriods.length}`);
       const test1 = initialPeriods.length === 0;
       log(`  Resultado: ${test1 ? 'PASS ✓' : 'FAIL ✗'}\n`);
+
+      if (!test1) {
+        log(`  ⚠️  ADVERTENCIA: Hay períodos residuales. Continuando tests de todas formas...\n`);
+      }
 
       // Test 2: Crear primer período
       log('📋 Test 2: Crear primer período');

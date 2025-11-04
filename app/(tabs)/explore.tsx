@@ -11,7 +11,7 @@ import { Fonts } from '@/constants/theme';
 import TestRunner from '@/tests/TestRunner';
 import Phase21TestRunner from '@/tests/phase2.1-verification-reactive';
 import Phase22Verification from '@/tests/phase2.2-verification';
-import Phase31Verification from '@/tests/phase3.1-verification';
+import Phase31Verification from '@/tests/phase3.1-verification-reactive';
 
 export default function TabTwoScreen() {
   return (
