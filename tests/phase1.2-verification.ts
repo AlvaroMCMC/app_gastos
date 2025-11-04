@@ -8,6 +8,8 @@
  * - CURRENCIES, AVAILABLE_CURRENCIES, DEFAULT_CURRENCY
  */
 
+// IMPORTANTE: Este import debe ir ANTES de uuid para polyfill de crypto.getRandomValues()
+import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 import {
   Currency,

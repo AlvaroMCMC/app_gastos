@@ -19,6 +19,11 @@ La Fase 1.1 del plan de implementación ha sido completada exitosamente.
 - Tipos TypeScript para uuid
 - Instalado como devDependency
 
+✓ **react-native-get-random-values**
+- Polyfill para crypto.getRandomValues() en React Native
+- Necesario para que uuid funcione correctamente
+- Se debe importar ANTES de usar uuid
+
 ### Archivos creados
 
 #### 1. `tests/` - Carpeta de pruebas

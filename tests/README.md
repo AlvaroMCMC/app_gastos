@@ -7,6 +7,7 @@ Verificar que las dependencias instaladas funcionen correctamente:
 - `@react-native-async-storage/async-storage` - Para persistencia local
 - `uuid` - Para generar IDs únicos
 - `@types/uuid` - Tipos TypeScript para uuid
+- `react-native-get-random-values` - Polyfill para crypto.getRandomValues()
 
 ### Archivos
 
@@ -73,13 +74,18 @@ Resultado: PASS ✓
 - Asegúrate de estar ejecutando en un dispositivo real o simulador (no web)
 - Verifica que la dependencia esté instalada: `npm list @react-native-async-storage/async-storage`
 
-**Si UUID falla:**
+**Si UUID falla con error "crypto.getRandomValues() not supported":**
+- Asegúrate de que `react-native-get-random-values` esté instalado
+- Verifica que se importe ANTES de uuid: `import 'react-native-get-random-values';`
+- Reinstala si es necesario: `npm install react-native-get-random-values`
+
+**Si UUID falla por otros motivos:**
 - Verifica instalación: `npm list uuid`
 - Verifica tipos: `npm list @types/uuid`
 
-**Para reinstalar dependencias:**
+**Para reinstalar todas las dependencias:**
 ```bash
-npm install @react-native-async-storage/async-storage uuid
+npm install @react-native-async-storage/async-storage uuid react-native-get-random-values
 npm install --save-dev @types/uuid
 ```
 
