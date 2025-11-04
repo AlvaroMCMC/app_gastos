@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
+import TestRunner from '@/tests/TestRunner';
 
 export default function TabTwoScreen() {
   return (
@@ -27,10 +28,12 @@ export default function TabTwoScreen() {
           style={{
             fontFamily: Fonts.rounded,
           }}>
-          Explore
+          Explore - Phase 1.1 Tests
         </ThemedText>
       </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
+      <ThemedText>Verificación de dependencias instaladas en Fase 1.1</ThemedText>
+
+      <TestRunner />
       <Collapsible title="File-based routing">
         <ThemedText>
           This app has two screens:{' '}
