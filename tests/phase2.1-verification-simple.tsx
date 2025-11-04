@@ -13,7 +13,7 @@ import { clearStorage } from '@/services/storage';
  * Componente de tests que usa el Context directamente
  */
 function ContextTester() {
-  const context = useExpenses();
+  const { periods, loading, createPeriod, addExpense, deleteExpense, deletePeriod, updatePeriodCurrency, reloadPeriods } = useExpenses();
   const [logs, setLogs] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
 
@@ -34,95 +34,100 @@ function ContextTester() {
       // Limpiar storage y recargar
       log('🧹 Limpiando storage...');
       await clearStorage();
-      await context.reloadPeriods();
-      await delay(500);
+      await reloadPeriods();
+      await delay(1500); // Esperar a que el Context se actualice
+
       log('✓ Storage limpiado y recargado\n');
+      await delay(500);
 
       // Test 1: Estado inicial
       log('📋 Test 1: Estado inicial');
-      log(`  Períodos: ${context.periods.length}`);
-      log(`  Loading: ${context.loading}`);
-      const test1 = context.periods.length === 0;
+      await delay(300);
+      // Releer períodos después del delay
+      const currentPeriods1 = periods;
+      log(`  Períodos: ${currentPeriods1.length}`);
+      log(`  Loading: ${loading}`);
+      const test1 = currentPeriods1.length === 0;
       log(`  Resultado: ${test1 ? 'PASS ✓' : 'FAIL ✗'}\n`);
 
       // Test 2: Crear primer período
       log('📋 Test 2: Crear período');
-      await context.createPeriod('Test Período', 'SOL');
-      await delay(500);
+      await createPeriod('Test Período', 'SOL');
+      await delay(1000); // Esperar a que se guarde y actualice
 
-      // Re-leer el contexto
-      const periodsAfterCreate = context.periods;
-      log(`  Períodos después: ${periodsAfterCreate.length}`);
+      const currentPeriods2 = periods;
+      log(`  Períodos después: ${currentPeriods2.length}`);
 
-      if (periodsAfterCreate.length > 0) {
-        log(`  Nombre: ${periodsAfterCreate[0].name}`);
-        log(`  Moneda: ${periodsAfterCreate[0].defaultCurrency}`);
-        const test2 = periodsAfterCreate.length === 1;
+      if (currentPeriods2.length > 0) {
+        const createdPeriod = currentPeriods2[0];
+        log(`  Nombre: ${createdPeriod.name}`);
+        log(`  Moneda: ${createdPeriod.defaultCurrency}`);
+        const test2 = currentPeriods2.length === 1;
         log(`  Resultado: ${test2 ? 'PASS ✓' : 'FAIL ✗'}\n`);
 
         // Test 3: Añadir gasto
-        const period = periodsAfterCreate[0];
         log('📋 Test 3: Añadir gasto');
-        await context.addExpense(period.id, 'Supermercado', 150.50);
-        await delay(500);
+        await addExpense(createdPeriod.id, 'Supermercado', 150.50);
+        await delay(1000);
 
-        const periodsAfterExpense = context.periods;
-        const periodWithExpense = periodsAfterExpense.find(p => p.id === period.id);
+        const currentPeriods3 = periods;
+        const period3 = currentPeriods3.find(p => p.id === createdPeriod.id);
 
-        if (periodWithExpense) {
-          log(`  Gastos: ${periodWithExpense.expenses.length}`);
-          if (periodWithExpense.expenses.length > 0) {
-            log(`  Descripción: ${periodWithExpense.expenses[0].description}`);
-            log(`  Monto: ${periodWithExpense.expenses[0].amount}`);
+        if (period3) {
+          log(`  Gastos: ${period3.expenses.length}`);
+          if (period3.expenses.length > 0) {
+            log(`  Descripción: ${period3.expenses[0].description}`);
+            log(`  Monto: ${period3.expenses[0].amount}`);
           }
-          const test3 = periodWithExpense.expenses.length === 1;
+          const test3 = period3.expenses.length === 1;
           log(`  Resultado: ${test3 ? 'PASS ✓' : 'FAIL ✗'}\n`);
 
           // Test 4: Añadir más gastos
           log('📋 Test 4: Añadir múltiples gastos');
-          await context.addExpense(period.id, 'Transporte', 50);
-          await delay(300);
-          await context.addExpense(period.id, 'Restaurante', 85.75);
-          await delay(500);
+          await addExpense(createdPeriod.id, 'Transporte', 50);
+          await delay(800);
+          await addExpense(createdPeriod.id, 'Restaurante', 85.75);
+          await delay(1000);
 
-          const periodsAfterMultiple = context.periods;
-          const periodWithMultiple = periodsAfterMultiple.find(p => p.id === period.id);
+          const currentPeriods4 = periods;
+          const period4 = currentPeriods4.find(p => p.id === createdPeriod.id);
 
-          if (periodWithMultiple) {
-            log(`  Total gastos: ${periodWithMultiple.expenses.length}`);
-            const total = periodWithMultiple.expenses.reduce((sum, e) => sum + e.amount, 0);
+          if (period4) {
+            log(`  Total gastos: ${period4.expenses.length}`);
+            const total = period4.expenses.reduce((sum, e) => sum + e.amount, 0);
             log(`  Suma total: S/ ${total.toFixed(2)}`);
-            const test4 = periodWithMultiple.expenses.length === 3;
+            const test4 = period4.expenses.length === 3;
             log(`  Resultado: ${test4 ? 'PASS ✓' : 'FAIL ✗'}\n`);
 
             // Test 5: Eliminar gasto
             log('📋 Test 5: Eliminar gasto');
-            const expenseToDelete = periodWithMultiple.expenses[0];
-            await context.deleteExpense(period.id, expenseToDelete.id);
-            await delay(500);
+            const expenseToDelete = period4.expenses[0];
+            await deleteExpense(createdPeriod.id, expenseToDelete.id);
+            await delay(1000);
 
-            const periodsAfterDelete = context.periods;
-            const periodAfterDelete = periodsAfterDelete.find(p => p.id === period.id);
+            const currentPeriods5 = periods;
+            const period5 = currentPeriods5.find(p => p.id === createdPeriod.id);
 
-            if (periodAfterDelete) {
-              log(`  Gastos después: ${periodAfterDelete.expenses.length}`);
-              const test5 = periodAfterDelete.expenses.length === 2;
+            if (period5) {
+              log(`  Gastos después: ${period5.expenses.length}`);
+              const test5 = period5.expenses.length === 2;
               log(`  Resultado: ${test5 ? 'PASS ✓' : 'FAIL ✗'}\n`);
             }
 
             // Test 6: Cambiar moneda
             log('📋 Test 6: Cambiar moneda');
-            const currentCurrency = context.periods.find(p => p.id === period.id)?.defaultCurrency;
+            const currentPeriods6a = periods;
+            const currentCurrency = currentPeriods6a.find(p => p.id === createdPeriod.id)?.defaultCurrency;
             log(`  Moneda antes: ${currentCurrency}`);
-            await context.updatePeriodCurrency(period.id, 'USD');
-            await delay(500);
+            await updatePeriodCurrency(createdPeriod.id, 'USD');
+            await delay(1000);
 
-            const periodsAfterCurrency = context.periods;
-            const periodWithNewCurrency = periodsAfterCurrency.find(p => p.id === period.id);
+            const currentPeriods6b = periods;
+            const period6 = currentPeriods6b.find(p => p.id === createdPeriod.id);
 
-            if (periodWithNewCurrency) {
-              log(`  Moneda después: ${periodWithNewCurrency.defaultCurrency}`);
-              const test6 = periodWithNewCurrency.defaultCurrency === 'USD';
+            if (period6) {
+              log(`  Moneda después: ${period6.defaultCurrency}`);
+              const test6 = period6.defaultCurrency === 'USD';
               log(`  Resultado: ${test6 ? 'PASS ✓' : 'FAIL ✗'}\n`);
             }
           }
@@ -130,44 +135,45 @@ function ContextTester() {
 
         // Test 7: Crear múltiples períodos
         log('📋 Test 7: Crear múltiples períodos');
-        const periodsBeforeMultiple = context.periods.length;
-        await context.createPeriod('Diciembre 2025', 'BRL');
-        await delay(300);
-        await context.createPeriod('Enero 2026', 'SOL');
-        await delay(500);
+        const currentPeriods7a = periods;
+        const periodsBeforeMultiple = currentPeriods7a.length;
+        await createPeriod('Diciembre 2025', 'BRL');
+        await delay(800);
+        await createPeriod('Enero 2026', 'SOL');
+        await delay(1000);
 
-        const periodsAfterMultiple = context.periods;
+        const currentPeriods7b = periods;
         log(`  Períodos antes: ${periodsBeforeMultiple}`);
-        log(`  Períodos después: ${periodsAfterMultiple.length}`);
-        const test7 = periodsAfterMultiple.length === 3;
+        log(`  Períodos después: ${currentPeriods7b.length}`);
+        const test7 = currentPeriods7b.length === 3;
         log(`  Resultado: ${test7 ? 'PASS ✓' : 'FAIL ✗'}\n`);
 
         // Test 8: Eliminar período
         log('📋 Test 8: Eliminar período');
-        const currentPeriods = context.periods;
+        const currentPeriods8a = periods;
 
-        if (currentPeriods.length >= 2) {
-          const periodToDeleteId = currentPeriods[1].id;
-          const periodsBeforeDelete = currentPeriods.length;
+        if (currentPeriods8a.length >= 2) {
+          const periodToDeleteId = currentPeriods8a[1].id;
+          const periodsBeforeDelete = currentPeriods8a.length;
 
-          await context.deletePeriod(periodToDeleteId);
-          await delay(500);
+          await deletePeriod(periodToDeleteId);
+          await delay(1000);
 
-          const periodsAfterDeletePeriod = context.periods;
+          const currentPeriods8b = periods;
           log(`  Períodos antes: ${periodsBeforeDelete}`);
-          log(`  Períodos después: ${periodsAfterDeletePeriod.length}`);
+          log(`  Períodos después: ${currentPeriods8b.length}`);
 
-          const test8 = periodsAfterDeletePeriod.length === 2;
+          const test8 = currentPeriods8b.length === 2;
           log(`  Resultado: ${test8 ? 'PASS ✓' : 'FAIL ✗'}\n`);
         } else {
-          log(`  ⚠️  No hay suficientes períodos (actual: ${currentPeriods.length})\n`);
+          log(`  ⚠️  No hay suficientes períodos (actual: ${currentPeriods8a.length})\\n`);
         }
       } else {
         log('  ❌ No se pudo crear el período inicial\n');
       }
 
       log('=== TESTS COMPLETADOS ===');
-      const finalPeriods = context.periods;
+      const finalPeriods = periods;
       log(`Total períodos: ${finalPeriods.length}`);
       const totalExpenses = finalPeriods.reduce((sum, p) => sum + p.expenses.length, 0);
       log(`Total gastos: ${totalExpenses}`);
@@ -185,17 +191,16 @@ function ContextTester() {
       <Text style={styles.title}>Context Tests - Phase 2.1</Text>
 
       <View style={styles.status}>
-        <Text style={styles.statusText}>Períodos: {context.periods.length}</Text>
+        <Text style={styles.statusText}>Períodos: {periods.length}</Text>
         <Text style={styles.statusText}>
-          Loading: {context.loading ? 'Sí' : 'No'}
+          Loading: {loading ? 'Sí' : 'No'}
         </Text>
-        {context.error && <Text style={styles.errorText}>Error: {context.error}</Text>}
       </View>
 
       <Button
         title={running ? 'Ejecutando...' : 'Ejecutar Tests Context'}
         onPress={runTests}
-        disabled={running || context.loading}
+        disabled={running || loading}
       />
 
       {running && (
@@ -248,11 +253,6 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 14,
     marginBottom: 5,
-  },
-  errorText: {
-    fontSize: 14,
-    color: 'red',
-    marginTop: 5,
   },
   loadingContainer: {
     flexDirection: 'row',

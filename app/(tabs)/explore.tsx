@@ -9,7 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 import TestRunner from '@/tests/TestRunner';
-import Phase21TestRunner from '@/tests/phase2.1-verification-simple';
+import Phase21TestRunner from '@/tests/phase2.1-verification-reactive';
 
 export default function TabTwoScreen() {
   return (
