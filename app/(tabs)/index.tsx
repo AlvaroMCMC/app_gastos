@@ -1,98 +1,236 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+/**
+ * Pantalla Home - Lista de Períodos de Gastos
+ * Fase 3.1 - Interfaz principal de la app
+ */
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { useExpenses } from '@/contexts/ExpenseContext';
+import { PeriodCard } from '@/components/PeriodCard';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Fonts } from '@/constants/theme';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Hola Alvaro!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Paso 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { periods, loading, createPeriod } = useExpenses();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const [creatingPeriod, setCreatingPeriod] = useState(false);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // Handler para crear un nuevo período (simplificado para testing)
+  const handleCreatePeriod = async () => {
+    try {
+      setCreatingPeriod(true);
+      const monthNames = [
+        'Enero',
+        'Febrero',
+        'Marzo',
+        'Abril',
+        'Mayo',
+        'Junio',
+        'Julio',
+        'Agosto',
+        'Septiembre',
+        'Octubre',
+        'Noviembre',
+        'Diciembre',
+      ];
+      const now = new Date();
+      const monthName = monthNames[now.getMonth()];
+      const year = now.getFullYear();
+      const periodName = `${monthName} ${year}`;
+
+      await createPeriod(periodName, 'SOL');
+      Alert.alert('Éxito', `Período "${periodName}" creado`);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo crear el período');
+      console.error(error);
+    } finally {
+      setCreatingPeriod(false);
+    }
+  };
+
+  // Handler para tocar un período (navegación pendiente)
+  const handlePeriodPress = (periodId: string, periodName: string) => {
+    Alert.alert('Período seleccionado', `${periodName}\n(Navegación en Fase 4)`);
+  };
+
+  // Renderizar estado de carga
+  if (loading) {
+    return (
+      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
+        <Text style={[styles.loadingText, { color: colors.text }]}>
+          Cargando períodos...
+        </Text>
+      </View>
+    );
+  }
+
+  // Renderizar estado vacío
+  if (periods.length === 0) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.header}>
+          <Text
+            style={[
+              styles.title,
+              { color: colorScheme === 'dark' ? '#ffffff' : '#000000', fontFamily: Fonts.rounded },
+            ]}>
+            Mis Períodos
+          </Text>
+        </View>
+
+        <View style={styles.emptyContainer}>
+          <IconSymbol
+            name="calendar"
+            size={64}
+            color={colors.tabIconDefault}
+            style={styles.emptyIcon}
+          />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            No hay períodos
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: colors.tabIconDefault }]}>
+            Toca el botón + para crear tu primer período
+          </Text>
+        </View>
+
+        {/* Botón flotante */}
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: colors.tint }]}
+          onPress={handleCreatePeriod}
+          disabled={creatingPeriod}
+          activeOpacity={0.8}>
+          {creatingPeriod ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <IconSymbol name="plus" size={28} color="#ffffff" />
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Renderizar lista de períodos
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.header}>
+        <Text
+          style={[
+            styles.title,
+            { color: colorScheme === 'dark' ? '#ffffff' : '#000000', fontFamily: Fonts.rounded },
+          ]}>
+          Mis Períodos
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.tabIconDefault }]}>
+          {periods.length} {periods.length === 1 ? 'período' : 'períodos'}
+        </Text>
+      </View>
+
+      <FlatList
+        data={periods}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <PeriodCard
+            period={item}
+            onPress={() => handlePeriodPress(item.id, item.name)}
+          />
+        )}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      />
+
+      {/* Botón flotante */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.tint }]}
+        onPress={handleCreatePeriod}
+        disabled={creatingPeriod}
+        activeOpacity={0.8}>
+        {creatingPeriod ? (
+          <ActivityIndicator size="small" color="#ffffff" />
+        ) : (
+          <IconSymbol name="plus" size={28} color="#ffffff" />
+        )}
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+  },
+  header: {
+    padding: 20,
+    paddingTop: 60,
+    paddingBottom: 16,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+  },
+  listContent: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyIcon: {
+    marginBottom: 16,
+    opacity: 0.5,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  emptySubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  fab: {
     position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
   },
 });

@@ -11,6 +11,7 @@ import { Fonts } from '@/constants/theme';
 import TestRunner from '@/tests/TestRunner';
 import Phase21TestRunner from '@/tests/phase2.1-verification-reactive';
 import Phase22Verification from '@/tests/phase2.2-verification';
+import Phase31Verification from '@/tests/phase3.1-verification';
 
 export default function TabTwoScreen() {
   return (
@@ -44,6 +45,13 @@ export default function TabTwoScreen() {
           Fase 2.2: Tests de Integración
         </ThemedText>
         <Phase22Verification />
+      </ThemedView>
+
+      <ThemedView style={{ padding: 20, paddingTop: 0 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 3.1: Tests de Pantalla Home
+        </ThemedText>
+        <Phase31Verification />
       </ThemedView>
       <Collapsible title="File-based routing">
         <ThemedText>
