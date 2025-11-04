@@ -18,13 +18,15 @@ type TestStep =
   | 'test2_verify'
   | 'test3_add_expense'
   | 'test3_verify'
-  | 'test4_add_multiple'
+  | 'test4_add_first'
+  | 'test4_add_second'
   | 'test4_verify'
   | 'test5_delete_expense'
   | 'test5_verify'
   | 'test6_change_currency'
   | 'test6_verify'
-  | 'test7_create_multiple'
+  | 'test7_add_first'
+  | 'test7_add_second'
   | 'test7_verify'
   | 'test8_delete_period'
   | 'test8_verify'
@@ -98,13 +100,17 @@ function ContextTester() {
               log(`  Monto: ${period3.expenses[0].amount}`);
               const test3 = period3.expenses.length === 1;
               log(`  Resultado: ${test3 ? 'PASS ✓' : 'FAIL ✗'}\n`);
-              setCurrentStep('test4_add_multiple');
+              setCurrentStep('test4_add_first');
             }
             break;
 
-          case 'test4_add_multiple':
+          case 'test4_add_first':
             log('📋 Test 4: Añadir múltiples gastos');
             await context.addExpense(periodIdRef.current, 'Transporte', 50);
+            setCurrentStep('test4_add_second');
+            break;
+
+          case 'test4_add_second':
             await context.addExpense(periodIdRef.current, 'Restaurante', 85.75);
             setCurrentStep('test4_verify');
             break;
@@ -153,15 +159,18 @@ function ContextTester() {
               log(`  Moneda después: ${period6.defaultCurrency}`);
               const test6 = period6.defaultCurrency === 'USD';
               log(`  Resultado: ${test6 ? 'PASS ✓' : 'FAIL ✗'}\n`);
-              setCurrentStep('test7_create_multiple');
+              setCurrentStep('test7_add_first');
             }
             break;
 
-          case 'test7_create_multiple':
+          case 'test7_add_first':
             log('📋 Test 7: Crear múltiples períodos');
-            const before = context.periods.length;
-            log(`  Períodos antes: ${before}`);
+            log(`  Períodos antes: ${context.periods.length}`);
             await context.createPeriod('Diciembre 2025', 'BRL');
+            setCurrentStep('test7_add_second');
+            break;
+
+          case 'test7_add_second':
             await context.createPeriod('Enero 2026', 'SOL');
             setCurrentStep('test7_verify');
             break;
