@@ -1,6 +1,7 @@
 /**
  * Modal para crear un nuevo período
  * Fase 3.2
+ * Actualizado en Fase 4.3: Eliminado selector de moneda (se elige al crear gastos)
  */
 
 import React, { useState } from 'react';
@@ -16,7 +17,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Currency, CURRENCIES, AVAILABLE_CURRENCIES, DEFAULT_CURRENCY } from '@/types/expenses';
+import { Currency, DEFAULT_CURRENCY } from '@/types/expenses';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 
@@ -31,13 +32,11 @@ export function CreatePeriodModal({ visible, onClose, onCreatePeriod }: CreatePe
   const colors = Colors[colorScheme ?? 'light'];
 
   const [periodName, setPeriodName] = useState('');
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(DEFAULT_CURRENCY);
   const [creating, setCreating] = useState(false);
 
   // Resetear form al cerrar
   const handleClose = () => {
     setPeriodName('');
-    setSelectedCurrency(DEFAULT_CURRENCY);
     onClose();
   };
 
@@ -52,11 +51,14 @@ export function CreatePeriodModal({ visible, onClose, onCreatePeriod }: CreatePe
 
     try {
       setCreating(true);
-      await onCreatePeriod(trimmedName, selectedCurrency);
+      // Usar DEFAULT_CURRENCY (SOL) - la moneda real se elige al crear gastos
+      await onCreatePeriod(trimmedName, DEFAULT_CURRENCY);
       Alert.alert('Éxito', `Período "${trimmedName}" creado`);
       handleClose();
     } catch (error) {
-      Alert.alert('Error', 'No se pudo crear el período');
+      // Capturar error específico de nombre duplicado
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el período';
+      Alert.alert('Error', errorMessage);
       console.error(error);
     } finally {
       setCreating(false);
@@ -114,63 +116,11 @@ export function CreatePeriodModal({ visible, onClose, onCreatePeriod }: CreatePe
               />
             </View>
 
-            {/* Selector de moneda */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Moneda por defecto</Text>
-              <View style={styles.currencySelector}>
-                {AVAILABLE_CURRENCIES.map((currency) => (
-                  <TouchableOpacity
-                    key={currency}
-                    style={[
-                      styles.currencyButton,
-                      selectedCurrency === currency && styles.currencyButtonActive,
-                      {
-                        backgroundColor:
-                          selectedCurrency === currency
-                            ? '#007AFF'
-                            : colorScheme === 'dark'
-                              ? '#2c2c2e'
-                              : '#f5f5f5',
-                        borderColor:
-                          selectedCurrency === currency
-                            ? '#007AFF'
-                            : colorScheme === 'dark'
-                              ? '#38383a'
-                              : '#e5e5ea',
-                      },
-                    ]}
-                    onPress={() => setSelectedCurrency(currency)}
-                    disabled={creating}
-                    activeOpacity={0.7}>
-                    <Text
-                      style={[
-                        styles.currencySymbol,
-                        {
-                          color:
-                            selectedCurrency === currency
-                              ? '#ffffff'
-                              : colorScheme === 'dark'
-                                ? '#ffffff'
-                                : '#000000',
-                        },
-                      ]}>
-                      {CURRENCIES[currency].symbol}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.currencyName,
-                        {
-                          color:
-                            selectedCurrency === currency
-                              ? '#ffffff'
-                              : colors.tabIconDefault,
-                        },
-                      ]}>
-                      {CURRENCIES[currency].name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+            {/* Nota informativa */}
+            <View style={styles.infoBox}>
+              <Text style={[styles.infoText, { color: colors.tabIconDefault }]}>
+                La moneda se seleccionará al crear cada gasto
+              </Text>
             </View>
           </View>
 
@@ -252,27 +202,15 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
-  currencySelector: {
-    gap: 10,
-  },
-  currencyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  infoBox: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
     padding: 12,
     borderRadius: 8,
-    borderWidth: 2,
+    marginTop: 8,
   },
-  currencyButtonActive: {
-    borderWidth: 2,
-  },
-  currencySymbol: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginRight: 12,
-    width: 32,
-  },
-  currencyName: {
-    fontSize: 14,
+  infoText: {
+    fontSize: 12,
+    textAlign: 'center',
   },
   actions: {
     flexDirection: 'row',

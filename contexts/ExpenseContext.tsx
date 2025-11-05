@@ -44,7 +44,7 @@ interface ExpenseContextType {
 
   // Funciones para gastos
   /** Añadir un gasto a un período */
-  addExpense: (periodId: string, description: string, amount: number) => Promise<void>;
+  addExpense: (periodId: string, description: string, amount: number, currency?: Currency) => Promise<void>;
 
   /** Eliminar un gasto de un período */
   deleteExpense: (periodId: string, expenseId: string) => Promise<void>;
@@ -148,9 +148,23 @@ export function ExpenseProvider({ children }: ExpenseProviderProps) {
    */
   const createPeriod = async (name: string, currency: Currency = DEFAULT_CURRENCY): Promise<void> => {
     try {
+      // Validar que el nombre no esté vacío
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        throw new Error('El nombre del período no puede estar vacío');
+      }
+
+      // Validar que no exista un período con el mismo nombre (case-insensitive)
+      const existingPeriod = periods.find(
+        (p) => p.name.toLowerCase() === trimmedName.toLowerCase()
+      );
+      if (existingPeriod) {
+        throw new Error(`Ya existe un período con el nombre "${trimmedName}"`);
+      }
+
       const newPeriod: ExpensePeriod = {
         id: uuidv4(),
-        name,
+        name: trimmedName,
         createdAt: new Date(),
         expenses: [],
         defaultCurrency: currency,
@@ -160,7 +174,7 @@ export function ExpenseProvider({ children }: ExpenseProviderProps) {
       setPeriods(updatedPeriods);
       await savePeriodsToStorage(updatedPeriods);
 
-      console.log('✅ Context: Período creado:', name);
+      console.log('✅ Context: Período creado:', trimmedName);
     } catch (err) {
       console.error('❌ Context: Error creando período:', err);
       throw err;
@@ -211,7 +225,8 @@ export function ExpenseProvider({ children }: ExpenseProviderProps) {
   const addExpense = async (
     periodId: string,
     description: string,
-    amount: number
+    amount: number,
+    currency: Currency = 'SOL'
   ): Promise<void> => {
     try {
       const period = periods.find((p) => p.id === periodId);
@@ -224,7 +239,7 @@ export function ExpenseProvider({ children }: ExpenseProviderProps) {
         description,
         amount,
         date: new Date(),
-        currency: period.defaultCurrency,
+        currency, // Usar la moneda recibida como parámetro
       };
 
       const updatedPeriods = periods.map((p) =>
@@ -234,7 +249,7 @@ export function ExpenseProvider({ children }: ExpenseProviderProps) {
       setPeriods(updatedPeriods);
       await savePeriodsToStorage(updatedPeriods);
 
-      console.log('✅ Context: Gasto añadido:', description, '→', amount);
+      console.log('✅ Context: Gasto añadido:', description, '→', amount, currency);
     } catch (err) {
       console.error('❌ Context: Error añadiendo gasto:', err);
       throw err;

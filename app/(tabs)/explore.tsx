@@ -16,6 +16,11 @@ import Phase32Verification from '@/tests/phase3.2-verification';
 import Phase33Verification from '@/tests/phase3.3-verification';
 import Phase41Verification from '@/tests/phase4.1-verification';
 import Phase42Verification from '@/tests/phase4.2-verification';
+import Phase43Verification from '@/tests/phase4.3-verification';
+import Phase44Verification from '@/tests/phase4.4-verification';
+import Phase45Verification from '@/tests/phase4.5-verification';
+import Phase53Verification from '@/tests/phase5.3-verification';
+import AllTestsVerification from '@/tests/all-tests-verification';
 
 export default function TabTwoScreen() {
   return (
@@ -85,6 +90,45 @@ export default function TabTwoScreen() {
         </ThemedText>
         <Phase42Verification />
       </ThemedView>
+
+      <ThemedView style={{ padding: 20, paddingTop: 0 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 4.3: Tests de Multi-Moneda
+        </ThemedText>
+        <Phase43Verification />
+      </ThemedView>
+
+      <ThemedView style={{ padding: 20, paddingTop: 0 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 4.4: Tests de Nombres Únicos y Timestamps
+        </ThemedText>
+        <Phase44Verification />
+      </ThemedView>
+
+      <ThemedView style={{ padding: 20, paddingTop: 0 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 4.5: Tests de Ordenamiento y Fecha con Hora
+        </ThemedText>
+        <Phase45Verification />
+      </ThemedView>
+
+      <ThemedView style={{ padding: 20, paddingTop: 0 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 5.3: Tests de Formateo de Números
+        </ThemedText>
+        <Phase53Verification />
+      </ThemedView>
+
+      <ThemedView style={{ padding: 20, paddingTop: 0, marginBottom: 20 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10, fontSize: 16, color: '#007AFF' }}>
+          🔄 Tests Completos (Todas las Fases)
+        </ThemedText>
+        <ThemedText style={{ fontSize: 12, marginBottom: 10, opacity: 0.7 }}>
+          Ejecuta todos los tests de las fases 3.1 a 5.3 para verificar que cambios nuevos no rompan funcionalidades anteriores
+        </ThemedText>
+        <AllTestsVerification />
+      </ThemedView>
+
       <Collapsible title="File-based routing">
         <ThemedText>
           This app has two screens:{' '}

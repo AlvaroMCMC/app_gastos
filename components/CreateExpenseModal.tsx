@@ -18,31 +18,32 @@ import {
 } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { Currency, CURRENCIES, AVAILABLE_CURRENCIES } from '@/types/expenses';
 
 interface CreateExpenseModalProps {
   visible: boolean;
   onClose: () => void;
-  onCreateExpense: (description: string, amount: number) => Promise<void>;
-  currencySymbol: string;
+  onCreateExpense: (description: string, amount: number, currency: Currency) => Promise<void>;
 }
 
 export function CreateExpenseModal({
   visible,
   onClose,
   onCreateExpense,
-  currencySymbol,
 }: CreateExpenseModalProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>('SOL');
   const [creating, setCreating] = useState(false);
 
   // Resetear form al cerrar
   const handleClose = () => {
     setDescription('');
     setAmount('');
+    setSelectedCurrency('SOL');
     onClose();
   };
 
@@ -64,7 +65,7 @@ export function CreateExpenseModal({
 
     try {
       setCreating(true);
-      await onCreateExpense(trimmedDescription, parsedAmount);
+      await onCreateExpense(trimmedDescription, parsedAmount, selectedCurrency);
       Alert.alert('Éxito', `Gasto "${trimmedDescription}" añadido`);
       handleClose();
     } catch (error) {
@@ -128,7 +129,7 @@ export function CreateExpenseModal({
 
             {/* Input monto */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Monto ({currencySymbol})</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Monto</Text>
               <View style={styles.amountInputContainer}>
                 <Text
                   style={[
@@ -138,7 +139,7 @@ export function CreateExpenseModal({
                       backgroundColor: colorScheme === 'dark' ? '#38383a' : '#e5e5ea',
                     },
                   ]}>
-                  {currencySymbol}
+                  {CURRENCIES[selectedCurrency].symbol}
                 </Text>
                 <TextInput
                   style={[
@@ -157,6 +158,65 @@ export function CreateExpenseModal({
                   keyboardType="decimal-pad"
                   editable={!creating}
                 />
+              </View>
+            </View>
+
+            {/* Selector de moneda */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>Moneda</Text>
+              <View style={styles.currencySelector}>
+                {AVAILABLE_CURRENCIES.map((currency) => (
+                  <TouchableOpacity
+                    key={currency}
+                    style={[
+                      styles.currencyButton,
+                      selectedCurrency === currency && styles.currencyButtonActive,
+                      {
+                        backgroundColor:
+                          selectedCurrency === currency
+                            ? '#007AFF'
+                            : colorScheme === 'dark'
+                              ? '#2c2c2e'
+                              : '#f5f5f5',
+                        borderColor:
+                          selectedCurrency === currency
+                            ? '#007AFF'
+                            : colorScheme === 'dark'
+                              ? '#38383a'
+                              : '#e5e5ea',
+                      },
+                    ]}
+                    onPress={() => setSelectedCurrency(currency)}
+                    disabled={creating}
+                    activeOpacity={0.7}>
+                    <Text
+                      style={[
+                        styles.currencySymbol,
+                        {
+                          color:
+                            selectedCurrency === currency
+                              ? '#ffffff'
+                              : colorScheme === 'dark'
+                                ? '#ffffff'
+                                : '#000000',
+                        },
+                      ]}>
+                      {CURRENCIES[currency].symbol}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.currencyName,
+                        {
+                          color:
+                            selectedCurrency === currency
+                              ? '#ffffff'
+                              : colors.tabIconDefault,
+                        },
+                      ]}>
+                      {CURRENCIES[currency].name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
@@ -270,6 +330,29 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 12,
     textAlign: 'center',
+  },
+  currencySelector: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  currencyButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  currencyButtonActive: {
+    borderWidth: 2,
+  },
+  currencySymbol: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  currencyName: {
+    fontSize: 12,
   },
   actions: {
     flexDirection: 'row',

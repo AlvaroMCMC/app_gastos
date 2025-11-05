@@ -18,17 +18,47 @@ import { useExpenses } from '@/contexts/ExpenseContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { CURRENCIES, Currency, AVAILABLE_CURRENCIES } from '@/types/expenses';
+import { CURRENCIES, Currency, AVAILABLE_CURRENCIES, Expense } from '@/types/expenses';
 import { Fonts } from '@/constants/theme';
 import { CreateExpenseModal } from '@/components/CreateExpenseModal';
+import { formatCurrency } from '@/utils/formatters';
+
+// Interfaz para totales por moneda
+interface CurrencyTotal {
+  currency: Currency;
+  total: number;
+  count: number;
+}
+
+// Función helper para calcular totales por moneda
+const calculateTotalsByCurrency = (expenses: Expense[]): CurrencyTotal[] => {
+  const totalsMap: Record<Currency, { total: number; count: number }> = {
+    SOL: { total: 0, count: 0 },
+    USD: { total: 0, count: 0 },
+    BRL: { total: 0, count: 0 },
+  };
+
+  expenses.forEach((expense) => {
+    totalsMap[expense.currency].total += expense.amount;
+    totalsMap[expense.currency].count += 1;
+  });
+
+  // Filtrar solo las monedas que tienen gastos
+  return AVAILABLE_CURRENCIES
+    .filter((currency) => totalsMap[currency].count > 0)
+    .map((currency) => ({
+      currency,
+      total: totalsMap[currency].total,
+      count: totalsMap[currency].count,
+    }));
+};
 
 export default function PeriodDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { periods, deleteExpense, deletePeriod, updatePeriodCurrency, addExpense } = useExpenses();
+  const { periods, deleteExpense, deletePeriod, addExpense } = useExpenses();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
   // Encontrar el período actual
@@ -49,8 +79,8 @@ export default function PeriodDetailScreen() {
     );
   }
 
-  // Calcular total
-  const totalAmount = period.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  // Calcular totales por moneda
+  const currencyTotals = calculateTotalsByCurrency(period.expenses);
   const currencyInfo = CURRENCIES[period.defaultCurrency];
 
   // Handler para eliminar gasto
@@ -100,28 +130,35 @@ export default function PeriodDetailScreen() {
     );
   };
 
-  // Handler para cambiar moneda
-  const handleChangeCurrency = async (currency: Currency) => {
-    try {
-      await updatePeriodCurrency(period.id, currency);
-      setShowCurrencyPicker(false);
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo cambiar la moneda');
-    }
-  };
-
   // Handler para crear gasto desde el modal
-  const handleCreateExpense = async (description: string, amount: number) => {
-    await addExpense(period.id, description, amount);
+  const handleCreateExpense = async (description: string, amount: number, currency: Currency) => {
+    await addExpense(period.id, description, amount, currency);
   };
 
-  // Formatear fecha
+  // Formatear fecha simple (para header)
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('es-PE', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
+  };
+
+  // Formatear fecha con hora (para gastos)
+  const formatDateTime = (date: Date) => {
+    const dateStr = date.toLocaleDateString('es-PE', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    const timeStr = date.toLocaleTimeString('es-PE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    return `${dateStr} • ${timeStr}`;
   };
 
   return (
@@ -162,85 +199,64 @@ export default function PeriodDetailScreen() {
             borderColor: colorScheme === 'dark' ? '#38383a' : '#e5e5ea',
           },
         ]}>
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryLabel, { color: colors.tabIconDefault }]}>Total</Text>
-            <Text
-              style={[
-                styles.summaryValue,
-                { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
-              ]}>
-              {currencyInfo.symbol} {totalAmount.toFixed(2)}
-            </Text>
-          </View>
-
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryLabel, { color: colors.tabIconDefault }]}>Gastos</Text>
-            <Text
-              style={[
-                styles.summaryValue,
-                { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
-              ]}>
-              {period.expenses.length}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.summaryItem}
-            onPress={() => setShowCurrencyPicker(!showCurrencyPicker)}>
-            <Text style={[styles.summaryLabel, { color: colors.tabIconDefault }]}>Moneda</Text>
-            <View style={styles.currencyButton}>
-              <Text
-                style={[
-                  styles.summaryValue,
-                  { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
-                ]}>
-                {period.defaultCurrency}
-              </Text>
-              <IconSymbol
-                name="chevron.down"
-                size={16}
-                color={colorScheme === 'dark' ? '#ffffff' : '#000000'}
-              />
-            </View>
-          </TouchableOpacity>
+        <View style={styles.summaryHeader}>
+          <Text
+            style={[
+              styles.summaryTitle,
+              { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
+            ]}>
+            Resumen
+          </Text>
+          <Text style={[styles.expenseCount, { color: colors.tabIconDefault }]}>
+            {period.expenses.length} {period.expenses.length === 1 ? 'gasto' : 'gastos'}
+          </Text>
         </View>
 
-        {/* Selector de moneda */}
-        {showCurrencyPicker && (
-          <View style={styles.currencyPicker}>
-            {AVAILABLE_CURRENCIES.map((currency) => (
-              <TouchableOpacity
-                key={currency}
-                style={[
-                  styles.currencyOption,
-                  period.defaultCurrency === currency && styles.currencyOptionActive,
-                  {
-                    backgroundColor:
-                      period.defaultCurrency === currency
-                        ? colors.tint
-                        : colorScheme === 'dark'
-                          ? '#2c2c2e'
-                          : '#f5f5f5',
-                  },
-                ]}
-                onPress={() => handleChangeCurrency(currency)}>
-                <Text
+        {/* Totales por moneda */}
+        {currencyTotals.length === 0 ? (
+          <Text style={[styles.noExpensesText, { color: colors.tabIconDefault }]}>
+            Sin gastos
+          </Text>
+        ) : (
+          <View style={styles.totalsContainer}>
+            {currencyTotals.map(({ currency, total, count }) => {
+              const currInfo = CURRENCIES[currency];
+              return (
+                <View
+                  key={currency}
                   style={[
-                    styles.currencyOptionText,
+                    styles.totalRow,
                     {
-                      color:
-                        period.defaultCurrency === currency
-                          ? '#ffffff'
-                          : colorScheme === 'dark'
-                            ? '#ffffff'
-                            : '#000000',
+                      backgroundColor: colorScheme === 'dark' ? '#2c2c2e' : '#f5f5f5',
                     },
                   ]}>
-                  {CURRENCIES[currency].symbol} {CURRENCIES[currency].name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <View style={styles.totalCurrency}>
+                    <Text
+                      style={[
+                        styles.totalCurrencySymbol,
+                        { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
+                      ]}>
+                      {currInfo.symbol}
+                    </Text>
+                    <Text style={[styles.totalCurrencyName, { color: colors.tabIconDefault }]}>
+                      {currInfo.name}
+                    </Text>
+                  </View>
+                  <View style={styles.totalAmount}>
+                    <Text
+                      style={[
+                        styles.totalValue,
+                        { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
+                      ]}>
+                      {formatCurrency(total, currency)}
+                    </Text>
+                    <Text style={[styles.totalCount, { color: colors.tabIconDefault }]}>
+                      {count} {count === 1 ? 'gasto' : 'gastos'}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         )}
       </View>
@@ -282,7 +298,7 @@ export default function PeriodDetailScreen() {
                     {item.description}
                   </Text>
                   <Text style={[styles.expenseDate, { color: colors.tabIconDefault }]}>
-                    {formatDate(item.date)}
+                    {formatDateTime(item.date)}
                   </Text>
                 </View>
 
@@ -292,7 +308,7 @@ export default function PeriodDetailScreen() {
                       styles.expenseAmount,
                       { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
                     ]}>
-                    {CURRENCIES[item.currency].symbol} {item.amount.toFixed(2)}
+                    {formatCurrency(item.amount, item.currency)}
                   </Text>
 
                   <TouchableOpacity
@@ -322,7 +338,6 @@ export default function PeriodDetailScreen() {
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         onCreateExpense={handleCreateExpense}
-        currencySymbol={currencyInfo.symbol}
       />
     </View>
   );
@@ -384,40 +399,56 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  summaryRow: {
+  summaryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  summaryItem: {
-    flex: 1,
     alignItems: 'center',
+    marginBottom: 16,
   },
-  summaryLabel: {
-    fontSize: 11,
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  summaryValue: {
+  summaryTitle: {
     fontSize: 18,
     fontWeight: '600',
   },
-  currencyButton: {
+  expenseCount: {
+    fontSize: 14,
+  },
+  noExpensesText: {
+    fontSize: 14,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  totalsContainer: {
+    gap: 12,
+  },
+  totalRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 4,
-  },
-  currencyPicker: {
-    marginTop: 12,
-    gap: 8,
-  },
-  currencyOption: {
     padding: 12,
     borderRadius: 8,
   },
-  currencyOptionActive: {},
-  currencyOptionText: {
+  totalCurrency: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  totalCurrencySymbol: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  totalCurrencyName: {
     fontSize: 14,
-    fontWeight: '500',
+  },
+  totalAmount: {
+    alignItems: 'flex-end',
+  },
+  totalValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  totalCount: {
+    fontSize: 12,
+    marginTop: 2,
   },
   emptyContainer: {
     flex: 1,

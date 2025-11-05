@@ -1,33 +1,66 @@
 /**
  * Componente PeriodCard
  * Muestra una tarjeta con la información de un período de gastos
+ * Actualizado en Fase 4.3 para mostrar totales por moneda
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { ExpensePeriod, CURRENCIES } from '@/types/expenses';
+import { ExpensePeriod, CURRENCIES, Currency, AVAILABLE_CURRENCIES, Expense } from '@/types/expenses';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { formatCurrency } from '@/utils/formatters';
 
 interface PeriodCardProps {
   period: ExpensePeriod;
   onPress?: () => void;
 }
 
+// Interfaz para totales por moneda
+interface CurrencyTotal {
+  currency: Currency;
+  total: number;
+}
+
+// Función helper para calcular totales por moneda
+const calculateTotalsByCurrency = (expenses: Expense[]): CurrencyTotal[] => {
+  const totalsMap: Record<Currency, number> = {
+    SOL: 0,
+    USD: 0,
+    BRL: 0,
+  };
+
+  expenses.forEach((expense) => {
+    totalsMap[expense.currency] += expense.amount;
+  });
+
+  // Filtrar solo las monedas que tienen gastos
+  return AVAILABLE_CURRENCIES
+    .filter((currency) => totalsMap[currency] > 0)
+    .map((currency) => ({
+      currency,
+      total: totalsMap[currency],
+    }));
+};
+
 export function PeriodCard({ period, onPress }: PeriodCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  // Calcular total de gastos
-  const totalAmount = period.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  // Calcular totales por moneda
+  const currencyTotals = calculateTotalsByCurrency(period.expenses);
   const expenseCount = period.expenses.length;
-  const currencyInfo = CURRENCIES[period.defaultCurrency];
 
-  // Formatear fecha
+  // Formatear fecha con hora
   const formattedDate = period.createdAt.toLocaleDateString('es-PE', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+  });
+  const formattedTime = period.createdAt.toLocaleTimeString('es-PE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
   });
 
   return (
@@ -50,50 +83,41 @@ export function PeriodCard({ period, onPress }: PeriodCardProps) {
           {period.name}
         </Text>
         <Text style={[styles.date, { color: colors.tabIconDefault }]}>
-          {formattedDate}
+          {formattedDate} • {formattedTime}
         </Text>
       </View>
 
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.tabIconDefault }]}>
-            Total
-          </Text>
-          <Text
-            style={[
-              styles.statValue,
-              { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
-            ]}>
-            {currencyInfo.symbol} {totalAmount.toFixed(2)}
-          </Text>
+      {/* Totales por moneda */}
+      {currencyTotals.length === 0 ? (
+        <Text style={[styles.noExpenses, { color: colors.tabIconDefault }]}>
+          Sin gastos
+        </Text>
+      ) : (
+        <View style={styles.totalsContainer}>
+          {currencyTotals.map(({ currency, total }) => {
+            const currencyInfo = CURRENCIES[currency];
+            return (
+              <View key={currency} style={styles.totalItem}>
+                <Text
+                  style={[
+                    styles.totalValue,
+                    { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
+                  ]}>
+                  {formatCurrency(total, currency)}
+                </Text>
+                <Text style={[styles.totalLabel, { color: colors.tabIconDefault }]}>
+                  {currencyInfo.name}
+                </Text>
+              </View>
+            );
+          })}
         </View>
+      )}
 
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.tabIconDefault }]}>
-            Gastos
-          </Text>
-          <Text
-            style={[
-              styles.statCount,
-              { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
-            ]}>
-            {expenseCount}
-          </Text>
-        </View>
-
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: colors.tabIconDefault }]}>
-            Moneda
-          </Text>
-          <Text
-            style={[
-              styles.statCurrency,
-              { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
-            ]}>
-            {period.defaultCurrency}
-          </Text>
-        </View>
-      </View>
+      {/* Contador de gastos */}
+      <Text style={[styles.expenseCount, { color: colors.tabIconDefault }]}>
+        {expenseCount} {expenseCount === 1 ? 'gasto' : 'gastos'}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -115,6 +139,9 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5ea',
   },
   periodName: {
     fontSize: 18,
@@ -124,28 +151,36 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 12,
   },
-  statsContainer: {
+  noExpenses: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 8,
+  },
+  totalsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 8,
   },
-  statItem: {
+  totalItem: {
     flex: 1,
+    minWidth: '30%',
   },
-  statLabel: {
+  totalValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  totalLabel: {
     fontSize: 11,
-    marginBottom: 4,
     textTransform: 'uppercase',
   },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  statCount: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  statCurrency: {
-    fontSize: 16,
-    fontWeight: '600',
+  expenseCount: {
+    fontSize: 12,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e5ea',
   },
 });

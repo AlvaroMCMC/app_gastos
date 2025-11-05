@@ -116,7 +116,7 @@ export default function HomeScreen() {
       </View>
 
       <FlatList
-        data={periods}
+        data={[...periods].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <PeriodCard period={item} onPress={() => handlePeriodPress(item.id)} />

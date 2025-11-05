@@ -15,7 +15,15 @@
       "Bash(taskkill:*)",
       "Bash(ping:*)",
       "Bash(nul)",
-      "Bash(del:*)"
+      "Bash(del:*)",
+      "mcp__puppeteer__puppeteer_navigate",
+      "mcp__puppeteer__puppeteer_screenshot",
+      "mcp__puppeteer__puppeteer_click",
+      "mcp__puppeteer__puppeteer_evaluate",
+      "Bash(set PORT=8082:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(tasklist:*)",
+      "Bash(cmd /c \"taskkill /IM node.exe /F\")"
     ],
     "deny": [],
     "ask": []
