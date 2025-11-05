@@ -70,7 +70,8 @@ export function CreateExpenseModal({
       handleClose();
     } catch (error) {
       Alert.alert('Error', 'No se pudo añadir el gasto');
-      console.error(error);
+      // No usar console.error aquí para evitar la barra roja de React Native
+      // El error ya se muestra al usuario mediante Alert
     } finally {
       setCreating(false);
     }

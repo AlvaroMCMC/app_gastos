@@ -59,7 +59,8 @@ export function CreatePeriodModal({ visible, onClose, onCreatePeriod }: CreatePe
       // Capturar error específico de nombre duplicado
       const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el período';
       Alert.alert('Error', errorMessage);
-      console.error(error);
+      // No usar console.error aquí para evitar la barra roja de React Native
+      // El error ya se muestra al usuario mediante Alert
     } finally {
       setCreating(false);
     }

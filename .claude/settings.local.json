@@ -23,7 +23,8 @@
       "Bash(set PORT=8082:*)",
       "Bash(timeout /t 5 /nobreak)",
       "Bash(tasklist:*)",
-      "Bash(cmd /c \"taskkill /IM node.exe /F\")"
+      "Bash(cmd /c \"taskkill /IM node.exe /F\")",
+      "Bash(dir error8*)"
     ],
     "deny": [],
     "ask": []
