@@ -13,7 +13,9 @@ import Phase21TestRunner from '@/tests/phase2.1-verification-reactive';
 import Phase22Verification from '@/tests/phase2.2-verification';
 import Phase31Verification from '@/tests/phase3.1-verification-reactive';
 import Phase32Verification from '@/tests/phase3.2-verification';
+import Phase33Verification from '@/tests/phase3.3-verification';
 import Phase41Verification from '@/tests/phase4.1-verification';
+import Phase42Verification from '@/tests/phase4.2-verification';
 
 export default function TabTwoScreen() {
   return (
@@ -65,9 +67,23 @@ export default function TabTwoScreen() {
 
       <ThemedView style={{ padding: 20, paddingTop: 0 }}>
         <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 3.3: Tests de Corrección de Colores
+        </ThemedText>
+        <Phase33Verification />
+      </ThemedView>
+
+      <ThemedView style={{ padding: 20, paddingTop: 0 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
           Fase 4.1: Tests de Pantalla Detalles
         </ThemedText>
         <Phase41Verification />
+      </ThemedView>
+
+      <ThemedView style={{ padding: 20, paddingTop: 0 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 4.2: Tests de Modal Crear Gasto
+        </ThemedText>
+        <Phase42Verification />
       </ThemedView>
       <Collapsible title="File-based routing">
         <ThemedText>

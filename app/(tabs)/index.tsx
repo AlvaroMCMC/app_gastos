@@ -83,7 +83,7 @@ export default function HomeScreen() {
 
         {/* Botón flotante */}
         <TouchableOpacity
-          style={[styles.fab, { backgroundColor: colors.tint }]}
+          style={styles.fab}
           onPress={() => setModalVisible(true)}
           activeOpacity={0.8}>
           <IconSymbol name="plus" size={28} color="#ffffff" />
@@ -127,7 +127,7 @@ export default function HomeScreen() {
 
       {/* Botón flotante */}
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.tint }]}
+        style={styles.fab}
         onPress={() => setModalVisible(true)}
         activeOpacity={0.8}>
         <IconSymbol name="plus" size={28} color="#ffffff" />
@@ -199,6 +199,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
+    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

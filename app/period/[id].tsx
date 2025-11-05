@@ -20,14 +20,16 @@ import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { CURRENCIES, Currency, AVAILABLE_CURRENCIES } from '@/types/expenses';
 import { Fonts } from '@/constants/theme';
+import { CreateExpenseModal } from '@/components/CreateExpenseModal';
 
 export default function PeriodDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { periods, deleteExpense, deletePeriod, updatePeriodCurrency } = useExpenses();
+  const { periods, deleteExpense, deletePeriod, updatePeriodCurrency, addExpense } = useExpenses();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
   // Encontrar el período actual
   const period = periods.find((p) => p.id === id);
@@ -108,9 +110,9 @@ export default function PeriodDetailScreen() {
     }
   };
 
-  // Handler para añadir gasto (temporal - modal en Fase 4.2)
-  const handleAddExpense = () => {
-    Alert.alert('Añadir gasto', 'Modal en Fase 4.2');
+  // Handler para crear gasto desde el modal
+  const handleCreateExpense = async (description: string, amount: number) => {
+    await addExpense(period.id, description, amount);
   };
 
   // Formatear fecha
@@ -309,11 +311,19 @@ export default function PeriodDetailScreen() {
 
       {/* Botón flotante */}
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.tint }]}
-        onPress={handleAddExpense}
+        style={styles.fab}
+        onPress={() => setModalVisible(true)}
         activeOpacity={0.8}>
         <IconSymbol name="plus" size={28} color="#ffffff" />
       </TouchableOpacity>
+
+      {/* Modal crear gasto */}
+      <CreateExpenseModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onCreateExpense={handleCreateExpense}
+        currencySymbol={currencyInfo.symbol}
+      />
     </View>
   );
 }
@@ -472,6 +482,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
+    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

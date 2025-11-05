@@ -260,6 +260,114 @@ interface ExpenseContextType {
 
 ---
 
+### 3.3 Corrección de colores y contraste
+**Archivos afectados:**
+- `app/(tabs)/index.tsx` (FAB button)
+- `components/CreatePeriodModal.tsx` (botones y moneda seleccionada)
+- `components/CreateExpenseModal.tsx` (botones)
+
+**Problema identificado:**
+- El botón FAB (+) aparece completamente blanco sin ícono visible
+- En el modal de crear período, la moneda seleccionada (SOL) y el botón "Crear" tienen texto blanco sobre fondo blanco
+- Falta contraste adecuado entre texto y fondo en elementos interactivos
+
+**Cambios necesarios:**
+
+1. **FAB Button (index.tsx)**:
+   - El ícono "plus" debe ser visible con color contrastante
+   - Verificar que el color del ícono sea diferente al backgroundColor del botón
+
+2. **Modal Crear Período (CreatePeriodModal.tsx)**:
+   - Botón "Crear": Asegurar que el texto sea visible sobre el fondo del botón
+   - Moneda seleccionada: Cambiar el color de texto para que contraste con el fondo del botón activo
+   - Los botones de moneda activos deben tener texto oscuro o un fondo diferente
+
+3. **Principios de diseño**:
+   - Texto blanco sobre fondo claro → cambiar a texto oscuro
+   - Texto blanco sobre fondo oscuro → mantener blanco
+   - Usar colors.tint como fondo para botones primarios
+   - Texto en botones primarios: siempre '#ffffff' si el fondo es oscuro, '#000000' si es claro
+
+**Implementación:**
+
+En `app/(tabs)/index.tsx`:
+```typescript
+// FAB - asegurar contraste del ícono
+<TouchableOpacity
+  style={[styles.fab, { backgroundColor: colors.tint }]}
+  onPress={() => setModalVisible(true)}
+  activeOpacity={0.8}>
+  <IconSymbol name="plus" size={28} color="#ffffff" /> {/* Siempre blanco sobre tint */}
+</TouchableOpacity>
+```
+
+En `components/CreatePeriodModal.tsx`:
+```typescript
+// Botón de moneda seleccionada - texto debe contrastar
+<TouchableOpacity
+  style={[
+    styles.currencyButton,
+    selectedCurrency === currency && [
+      styles.currencyButtonActive,
+      { backgroundColor: colors.tint }
+    ],
+  ]}
+  onPress={() => setSelectedCurrency(currency)}>
+  <Text style={[
+    styles.currencySymbol,
+    {
+      color: selectedCurrency === currency
+        ? '#ffffff'  // Blanco cuando está seleccionado sobre tint
+        : (colorScheme === 'dark' ? '#ffffff' : '#000000')
+    }
+  ]}>
+    {CURRENCIES[currency].symbol}
+  </Text>
+  <Text style={[
+    styles.currencyName,
+    {
+      color: selectedCurrency === currency
+        ? '#ffffff'  // Blanco cuando está seleccionado sobre tint
+        : (colorScheme === 'dark' ? '#cccccc' : '#666666')
+    }
+  ]}>
+    {CURRENCIES[currency].name}
+  </Text>
+</TouchableOpacity>
+
+// Botón Crear - texto blanco sobre tint
+<TouchableOpacity
+  style={[styles.button, styles.buttonCreate, { backgroundColor: colors.tint }]}
+  onPress={handleCreate}
+  disabled={creating}
+  activeOpacity={0.7}>
+  {creating ? (
+    <ActivityIndicator size="small" color="#ffffff" />
+  ) : (
+    <Text style={styles.buttonCreateText}>Crear</Text>  // Debe ser blanco
+  )}
+</TouchableOpacity>
+
+// Asegurar que buttonCreateText tenga color blanco
+const styles = StyleSheet.create({
+  buttonCreateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',  // Siempre blanco
+  },
+});
+```
+
+**Test:**
+- Verificar FAB button en Home muestra ícono + claramente
+- Verificar que botón "Crear" en modal tiene texto visible
+- Verificar que moneda seleccionada tiene texto visible
+- Verificar que monedas no seleccionadas también son legibles
+- Probar en modo claro y oscuro
+- Verificar contraste adecuado en todos los elementos
+
+---
+
 ## Fase 4: Pantalla de Detalles del Período
 
 ### 4.1 Crear pantalla de detalles

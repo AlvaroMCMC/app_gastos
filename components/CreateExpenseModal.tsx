@@ -1,6 +1,6 @@
 /**
- * Modal para crear un nuevo período
- * Fase 3.2
+ * Modal para crear un nuevo gasto
+ * Fase 4.2
  */
 
 import React, { useState } from 'react';
@@ -16,47 +16,59 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Currency, CURRENCIES, AVAILABLE_CURRENCIES, DEFAULT_CURRENCY } from '@/types/expenses';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 
-interface CreatePeriodModalProps {
+interface CreateExpenseModalProps {
   visible: boolean;
   onClose: () => void;
-  onCreatePeriod: (name: string, currency: Currency) => Promise<void>;
+  onCreateExpense: (description: string, amount: number) => Promise<void>;
+  currencySymbol: string;
 }
 
-export function CreatePeriodModal({ visible, onClose, onCreatePeriod }: CreatePeriodModalProps) {
+export function CreateExpenseModal({
+  visible,
+  onClose,
+  onCreateExpense,
+  currencySymbol,
+}: CreateExpenseModalProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  const [periodName, setPeriodName] = useState('');
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(DEFAULT_CURRENCY);
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
   const [creating, setCreating] = useState(false);
 
   // Resetear form al cerrar
   const handleClose = () => {
-    setPeriodName('');
-    setSelectedCurrency(DEFAULT_CURRENCY);
+    setDescription('');
+    setAmount('');
     onClose();
   };
 
-  // Validar y crear período
+  // Validar y crear gasto
   const handleCreate = async () => {
-    // Validación: nombre no vacío
-    const trimmedName = periodName.trim();
-    if (!trimmedName) {
-      Alert.alert('Error', 'Por favor ingresa un nombre para el período');
+    // Validación: descripción no vacía
+    const trimmedDescription = description.trim();
+    if (!trimmedDescription) {
+      Alert.alert('Error', 'Por favor ingresa una descripción');
+      return;
+    }
+
+    // Validación: monto válido
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      Alert.alert('Error', 'Por favor ingresa un monto válido mayor a 0');
       return;
     }
 
     try {
       setCreating(true);
-      await onCreatePeriod(trimmedName, selectedCurrency);
-      Alert.alert('Éxito', `Período "${trimmedName}" creado`);
+      await onCreateExpense(trimmedDescription, parsedAmount);
+      Alert.alert('Éxito', `Gasto "${trimmedDescription}" añadido`);
       handleClose();
     } catch (error) {
-      Alert.alert('Error', 'No se pudo crear el período');
+      Alert.alert('Error', 'No se pudo añadir el gasto');
       console.error(error);
     } finally {
       setCreating(false);
@@ -87,15 +99,15 @@ export function CreatePeriodModal({ visible, onClose, onCreatePeriod }: CreatePe
                 styles.title,
                 { color: colorScheme === 'dark' ? '#ffffff' : '#000000' },
               ]}>
-              Nuevo Período
+              Nuevo Gasto
             </Text>
           </View>
 
           {/* Form */}
           <View style={styles.form}>
-            {/* Input nombre */}
+            {/* Input descripción */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Nombre del período</Text>
+              <Text style={[styles.label, { color: colors.text }]}>Descripción</Text>
               <TextInput
                 style={[
                   styles.input,
@@ -105,72 +117,54 @@ export function CreatePeriodModal({ visible, onClose, onCreatePeriod }: CreatePe
                     borderColor: colorScheme === 'dark' ? '#38383a' : '#e5e5ea',
                   },
                 ]}
-                placeholder="Ej: Noviembre 2025"
+                placeholder="Ej: Supermercado, Taxi, Restaurante..."
                 placeholderTextColor={colors.tabIconDefault}
-                value={periodName}
-                onChangeText={setPeriodName}
+                value={description}
+                onChangeText={setDescription}
                 editable={!creating}
                 autoFocus
               />
             </View>
 
-            {/* Selector de moneda */}
+            {/* Input monto */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Moneda por defecto</Text>
-              <View style={styles.currencySelector}>
-                {AVAILABLE_CURRENCIES.map((currency) => (
-                  <TouchableOpacity
-                    key={currency}
-                    style={[
-                      styles.currencyButton,
-                      selectedCurrency === currency && styles.currencyButtonActive,
-                      {
-                        backgroundColor:
-                          selectedCurrency === currency
-                            ? '#007AFF'
-                            : colorScheme === 'dark'
-                              ? '#2c2c2e'
-                              : '#f5f5f5',
-                        borderColor:
-                          selectedCurrency === currency
-                            ? '#007AFF'
-                            : colorScheme === 'dark'
-                              ? '#38383a'
-                              : '#e5e5ea',
-                      },
-                    ]}
-                    onPress={() => setSelectedCurrency(currency)}
-                    disabled={creating}
-                    activeOpacity={0.7}>
-                    <Text
-                      style={[
-                        styles.currencySymbol,
-                        {
-                          color:
-                            selectedCurrency === currency
-                              ? '#ffffff'
-                              : colorScheme === 'dark'
-                                ? '#ffffff'
-                                : '#000000',
-                        },
-                      ]}>
-                      {CURRENCIES[currency].symbol}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.currencyName,
-                        {
-                          color:
-                            selectedCurrency === currency
-                              ? '#ffffff'
-                              : colors.tabIconDefault,
-                        },
-                      ]}>
-                      {CURRENCIES[currency].name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <Text style={[styles.label, { color: colors.text }]}>Monto ({currencySymbol})</Text>
+              <View style={styles.amountInputContainer}>
+                <Text
+                  style={[
+                    styles.currencyPrefix,
+                    {
+                      color: colorScheme === 'dark' ? '#ffffff' : '#000000',
+                      backgroundColor: colorScheme === 'dark' ? '#38383a' : '#e5e5ea',
+                    },
+                  ]}>
+                  {currencySymbol}
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.amountInput,
+                    {
+                      backgroundColor: colorScheme === 'dark' ? '#2c2c2e' : '#f5f5f5',
+                      color: colorScheme === 'dark' ? '#ffffff' : '#000000',
+                      borderColor: colorScheme === 'dark' ? '#38383a' : '#e5e5ea',
+                    },
+                  ]}
+                  placeholder="0.00"
+                  placeholderTextColor={colors.tabIconDefault}
+                  value={amount}
+                  onChangeText={setAmount}
+                  keyboardType="decimal-pad"
+                  editable={!creating}
+                />
               </View>
+            </View>
+
+            {/* Info fecha */}
+            <View style={styles.infoBox}>
+              <Text style={[styles.infoText, { color: colors.tabIconDefault }]}>
+                La fecha se registrará automáticamente al crear el gasto
+              </Text>
             </View>
           </View>
 
@@ -192,7 +186,7 @@ export function CreatePeriodModal({ visible, onClose, onCreatePeriod }: CreatePe
               {creating ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <Text style={styles.buttonCreateText}>Crear</Text>
+                <Text style={styles.buttonCreateText}>Añadir</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -252,27 +246,30 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
-  currencySelector: {
-    gap: 10,
-  },
-  currencyButton: {
+  amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  currencyPrefix: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  amountInput: {
+    flex: 1,
+  },
+  infoBox: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
     padding: 12,
     borderRadius: 8,
-    borderWidth: 2,
+    marginTop: 4,
   },
-  currencyButtonActive: {
-    borderWidth: 2,
-  },
-  currencySymbol: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginRight: 12,
-    width: 32,
-  },
-  currencyName: {
-    fontSize: 14,
+  infoText: {
+    fontSize: 12,
+    textAlign: 'center',
   },
   actions: {
     flexDirection: 'row',
