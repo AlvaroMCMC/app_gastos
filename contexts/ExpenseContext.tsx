@@ -176,7 +176,8 @@ export function ExpenseProvider({ children }: ExpenseProviderProps) {
 
       console.log('✅ Context: Período creado:', trimmedName);
     } catch (err) {
-      console.error('❌ Context: Error creando período:', err);
+      // No usar console.error para errores de validación esperados
+      // El error se propagará al modal que mostrará el Alert al usuario
       throw err;
     }
   };
@@ -192,7 +193,7 @@ export function ExpenseProvider({ children }: ExpenseProviderProps) {
 
       console.log('🗑️  Context: Período eliminado:', periodId);
     } catch (err) {
-      console.error('❌ Context: Error eliminando período:', err);
+      // No usar console.error, el error se propaga
       throw err;
     }
   };
@@ -210,7 +211,7 @@ export function ExpenseProvider({ children }: ExpenseProviderProps) {
 
       console.log('💱 Context: Moneda actualizada:', periodId, '→', currency);
     } catch (err) {
-      console.error('❌ Context: Error actualizando moneda:', err);
+      // No usar console.error, el error se propaga
       throw err;
     }
   };
@@ -251,7 +252,7 @@ export function ExpenseProvider({ children }: ExpenseProviderProps) {
 
       console.log('✅ Context: Gasto añadido:', description, '→', amount, currency);
     } catch (err) {
-      console.error('❌ Context: Error añadiendo gasto:', err);
+      // No usar console.error, el error se propaga al modal
       throw err;
     }
   };
@@ -272,7 +273,7 @@ export function ExpenseProvider({ children }: ExpenseProviderProps) {
 
       console.log('🗑️  Context: Gasto eliminado:', expenseId);
     } catch (err) {
-      console.error('❌ Context: Error eliminando gasto:', err);
+      // No usar console.error, el error se propaga
       throw err;
     }
   };
