@@ -20,6 +20,8 @@ import Phase43Verification from '@/tests/phase4.3-verification';
 import Phase44Verification from '@/tests/phase4.4-verification';
 import Phase45Verification from '@/tests/phase4.5-verification';
 import Phase53Verification from '@/tests/phase5.3-verification';
+import Phase61Verification from '@/tests/phase6.1-verification';
+import Phase62Verification from '@/tests/phase6.2-verification';
 import AllTestsVerification from '@/tests/all-tests-verification';
 
 export default function TabTwoScreen() {
@@ -119,12 +121,26 @@ export default function TabTwoScreen() {
         <Phase53Verification />
       </ThemedView>
 
+      <ThemedView style={{ padding: 20, paddingTop: 0 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 6.1: Tests de Estilos y Diseño
+        </ThemedText>
+        <Phase61Verification />
+      </ThemedView>
+
+      <ThemedView style={{ padding: 20, paddingTop: 0 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 6.2: Tests de Animaciones Sutiles
+        </ThemedText>
+        <Phase62Verification />
+      </ThemedView>
+
       <ThemedView style={{ padding: 20, paddingTop: 0, marginBottom: 20 }}>
         <ThemedText style={{ fontWeight: 'bold', marginBottom: 10, fontSize: 16, color: '#007AFF' }}>
           🔄 Tests Completos (Todas las Fases)
         </ThemedText>
         <ThemedText style={{ fontSize: 12, marginBottom: 10, opacity: 0.7 }}>
-          Ejecuta todos los tests de las fases 3.1 a 5.3 para verificar que cambios nuevos no rompan funcionalidades anteriores
+          Ejecuta todos los tests de las fases 3.1 a 6.2 para verificar que cambios nuevos no rompan funcionalidades anteriores
         </ThemedText>
         <AllTestsVerification />
       </ThemedView>

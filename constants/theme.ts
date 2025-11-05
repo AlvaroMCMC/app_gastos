@@ -51,3 +51,99 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+/**
+ * Espaciado consistente usado en toda la app
+ * Fase 6.1 - Mejoras de diseño
+ */
+export const Spacing = {
+  /** 4px - Espaciado extra pequeño */
+  xs: 4,
+  /** 8px - Espaciado pequeño */
+  sm: 8,
+  /** 12px - Espaciado mediano */
+  md: 12,
+  /** 16px - Espaciado normal */
+  base: 16,
+  /** 20px - Espaciado grande */
+  lg: 20,
+  /** 24px - Espaciado extra grande */
+  xl: 24,
+  /** 32px - Espaciado doble extra grande */
+  xxl: 32,
+};
+
+/**
+ * Radios de borde consistentes
+ * Fase 6.1 - Mejoras de diseño
+ */
+export const BorderRadius = {
+  /** 4px - Esquinas pequeñas */
+  sm: 4,
+  /** 8px - Esquinas normales */
+  base: 8,
+  /** 12px - Esquinas grandes */
+  lg: 12,
+  /** 16px - Esquinas extra grandes */
+  xl: 16,
+  /** 9999px - Completamente redondeado */
+  full: 9999,
+};
+
+/**
+ * Tamaños de fuente consistentes
+ * Fase 6.1 - Mejoras de diseño
+ */
+export const FontSizes = {
+  /** 10px - Extra pequeño */
+  xs: 10,
+  /** 12px - Pequeño */
+  sm: 12,
+  /** 14px - Normal */
+  base: 14,
+  /** 16px - Mediano */
+  md: 16,
+  /** 18px - Grande */
+  lg: 18,
+  /** 20px - Extra grande */
+  xl: 20,
+  /** 24px - Doble extra grande */
+  xxl: 24,
+  /** 32px - Título */
+  title: 32,
+};
+
+/**
+ * Sombras consistentes
+ * Fase 6.1 - Mejoras de diseño
+ */
+export const Shadows = {
+  sm: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  base: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  lg: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  xl: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+};

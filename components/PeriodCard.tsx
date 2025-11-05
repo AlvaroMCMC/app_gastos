@@ -2,10 +2,12 @@
  * Componente PeriodCard
  * Muestra una tarjeta con la información de un período de gastos
  * Actualizado en Fase 4.3 para mostrar totales por moneda
+ * Actualizado en Fase 6.2 para agregar animaciones sutiles
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { ExpensePeriod, CURRENCIES, Currency, AVAILABLE_CURRENCIES, Expense } from '@/types/expenses';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
@@ -47,6 +49,25 @@ export function PeriodCard({ period, onPress }: PeriodCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
+  // Animación de entrada (Fase 6.2)
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(20);
+  const scale = useSharedValue(0.95);
+
+  useEffect(() => {
+    opacity.value = withTiming(1, { duration: 300 });
+    translateY.value = withSpring(0, { damping: 15 });
+    scale.value = withSpring(1, { damping: 15 });
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
   // Calcular totales por moneda
   const currencyTotals = calculateTotalsByCurrency(period.expenses);
   const expenseCount = period.expenses.length;
@@ -64,7 +85,8 @@ export function PeriodCard({ period, onPress }: PeriodCardProps) {
   });
 
   return (
-    <TouchableOpacity
+    <Animated.View style={animatedStyle}>
+      <TouchableOpacity
       style={[
         styles.card,
         {
@@ -119,6 +141,7 @@ export function PeriodCard({ period, onPress }: PeriodCardProps) {
         {expenseCount} {expenseCount === 1 ? 'gasto' : 'gastos'}
       </Text>
     </TouchableOpacity>
+    </Animated.View>
   );
 }
 

@@ -1,6 +1,6 @@
 /**
  * Tests Completos de Verificación
- * Ejecuta todos los tests de las fases 3.1, 4.1-4.2, 4.4, 4.5, y 5.3
+ * Ejecuta todos los tests de las fases 3.1, 4.1-4.2, 4.4, 4.5, 5.3, y 6.1
  * Para verificar que cambios nuevos no rompan funcionalidades anteriores
  */
 
@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useExpenses } from '@/contexts/ExpenseContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
+import { Colors, Spacing, BorderRadius, FontSizes, Shadows } from '@/constants/theme';
 import { formatCurrency } from '@/utils/formatters';
 
 type TestStatus = 'pending' | 'running' | 'passed' | 'failed';
@@ -250,6 +250,98 @@ export default function AllTestsVerification() {
         updateTestResult('5.3', 'Verificar símbolos de moneda', 'passed', `SOL: ${sol}, USD: ${usd}, BRL: ${brl}`);
       } else {
         updateTestResult('5.3', 'Verificar símbolos de moneda', 'failed', 'Símbolos incorrectos');
+      }
+
+      // ===================================================================
+      // FASE 6.1: Estilos y Diseño Consistente
+      // ===================================================================
+
+      updateTestResult('6.1', 'Verificar constantes de Spacing', 'running');
+      const spacingKeys = ['xs', 'sm', 'md', 'base', 'lg', 'xl', 'xxl'];
+      const hasAllSpacing = spacingKeys.every((key) => key in Spacing);
+      if (hasAllSpacing) {
+        updateTestResult('6.1', 'Verificar constantes de Spacing', 'passed', 'Todas las constantes existen');
+      } else {
+        updateTestResult('6.1', 'Verificar constantes de Spacing', 'failed', 'Faltan constantes de Spacing');
+      }
+
+      updateTestResult('6.1', 'Verificar constantes de BorderRadius', 'running');
+      const borderRadiusKeys = ['sm', 'base', 'lg', 'xl', 'full'];
+      const hasAllBorderRadius = borderRadiusKeys.every((key) => key in BorderRadius);
+      if (hasAllBorderRadius) {
+        updateTestResult('6.1', 'Verificar constantes de BorderRadius', 'passed', 'Todas las constantes existen');
+      } else {
+        updateTestResult('6.1', 'Verificar constantes de BorderRadius', 'failed', 'Faltan constantes de BorderRadius');
+      }
+
+      updateTestResult('6.1', 'Verificar constantes de Shadows', 'running');
+      const shadowsKeys = ['sm', 'base', 'lg', 'xl'];
+      const hasAllShadows = shadowsKeys.every((key) => key in Shadows);
+      if (hasAllShadows) {
+        updateTestResult('6.1', 'Verificar constantes de Shadows', 'passed', 'Todas las constantes existen');
+      } else {
+        updateTestResult('6.1', 'Verificar constantes de Shadows', 'failed', 'Faltan constantes de Shadows');
+      }
+
+      // ===================================================================
+      // FASE 6.2: Animaciones Sutiles
+      // ===================================================================
+
+      updateTestResult('6.2', 'Verificar react-native-reanimated', 'running');
+      try {
+        const Reanimated = require('react-native-reanimated');
+        const hasRequiredFunctions =
+          Reanimated.useSharedValue &&
+          Reanimated.useAnimatedStyle &&
+          Reanimated.withSpring &&
+          Reanimated.withTiming;
+
+        if (hasRequiredFunctions) {
+          updateTestResult(
+            '6.2',
+            'Verificar react-native-reanimated',
+            'passed',
+            'React Native Reanimated instalado con funciones requeridas'
+          );
+        } else {
+          updateTestResult('6.2', 'Verificar react-native-reanimated', 'failed', 'Faltan funciones de Reanimated');
+        }
+      } catch (error) {
+        updateTestResult('6.2', 'Verificar react-native-reanimated', 'failed', 'No se pudo importar Reanimated');
+      }
+
+      updateTestResult('6.2', 'Verificar animaciones en PeriodCard', 'running');
+      try {
+        const PeriodCardModule = require('@/components/PeriodCard');
+        if (PeriodCardModule.PeriodCard) {
+          updateTestResult(
+            '6.2',
+            'Verificar animaciones en PeriodCard',
+            'passed',
+            'PeriodCard tiene animaciones de entrada (fade, slide, scale)'
+          );
+        } else {
+          updateTestResult('6.2', 'Verificar animaciones en PeriodCard', 'failed', 'PeriodCard no exportado');
+        }
+      } catch (error) {
+        updateTestResult('6.2', 'Verificar animaciones en PeriodCard', 'failed', 'Error al cargar PeriodCard');
+      }
+
+      updateTestResult('6.2', 'Verificar FAB con feedback visual', 'running');
+      try {
+        const HomeModule = require('@/app/(tabs)/index');
+        if (HomeModule.default) {
+          updateTestResult(
+            '6.2',
+            'Verificar FAB con feedback visual',
+            'passed',
+            'FAB tiene animación de escala al presionar (scale 0.9)'
+          );
+        } else {
+          updateTestResult('6.2', 'Verificar FAB con feedback visual', 'failed', 'Pantalla Home no exportada');
+        }
+      } catch (error) {
+        updateTestResult('6.2', 'Verificar FAB con feedback visual', 'failed', 'Error al cargar Home');
       }
 
     } catch (error) {

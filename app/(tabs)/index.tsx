@@ -1,6 +1,7 @@
 /**
  * Pantalla Home - Lista de Períodos de Gastos
  * Fase 3.1 - Interfaz principal de la app
+ * Actualizado en Fase 6.2 - Animaciones sutiles
  */
 
 import React, { useState } from 'react';
@@ -12,7 +13,9 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useExpenses } from '@/contexts/ExpenseContext';
 import { PeriodCard } from '@/components/PeriodCard';
 import { CreatePeriodModal } from '@/components/CreatePeriodModal';
@@ -23,12 +26,30 @@ import { Fonts } from '@/constants/theme';
 import { Currency } from '@/types/expenses';
 import { useRouter } from 'expo-router';
 
+// Crear AnimatedPressable para el FAB
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export default function HomeScreen() {
   const { periods, loading, createPeriod } = useExpenses();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [modalVisible, setModalVisible] = useState(false);
+
+  // Animación para el FAB (Fase 6.2)
+  const fabScale = useSharedValue(1);
+
+  const fabAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fabScale.value }],
+  }));
+
+  const handleFabPressIn = () => {
+    fabScale.value = withSpring(0.9, { damping: 10 });
+  };
+
+  const handleFabPressOut = () => {
+    fabScale.value = withSpring(1, { damping: 10 });
+  };
 
   // Handler para crear período desde el modal
   const handleCreatePeriod = async (name: string, currency: Currency) => {
@@ -81,13 +102,14 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Botón flotante */}
-        <TouchableOpacity
-          style={styles.fab}
+        {/* Botón flotante con animación (Fase 6.2) */}
+        <AnimatedPressable
+          style={[styles.fab, fabAnimatedStyle]}
           onPress={() => setModalVisible(true)}
-          activeOpacity={0.8}>
+          onPressIn={handleFabPressIn}
+          onPressOut={handleFabPressOut}>
           <IconSymbol name="plus" size={28} color="#ffffff" />
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         {/* Modal crear período */}
         <CreatePeriodModal
@@ -125,13 +147,14 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Botón flotante */}
-      <TouchableOpacity
-        style={styles.fab}
+      {/* Botón flotante con animación (Fase 6.2) */}
+      <AnimatedPressable
+        style={[styles.fab, fabAnimatedStyle]}
         onPress={() => setModalVisible(true)}
-        activeOpacity={0.8}>
+        onPressIn={handleFabPressIn}
+        onPressOut={handleFabPressOut}>
         <IconSymbol name="plus" size={28} color="#ffffff" />
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       {/* Modal crear período */}
       <CreatePeriodModal
