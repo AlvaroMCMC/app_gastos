@@ -15,48 +15,22 @@ import {
 } from 'react-native';
 import { useExpenses } from '@/contexts/ExpenseContext';
 import { PeriodCard } from '@/components/PeriodCard';
+import { CreatePeriodModal } from '@/components/CreatePeriodModal';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
+import { Currency } from '@/types/expenses';
 
 export default function HomeScreen() {
   const { periods, loading, createPeriod } = useExpenses();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const [creatingPeriod, setCreatingPeriod] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
-  // Handler para crear un nuevo período (simplificado para testing)
-  const handleCreatePeriod = async () => {
-    try {
-      setCreatingPeriod(true);
-      const monthNames = [
-        'Enero',
-        'Febrero',
-        'Marzo',
-        'Abril',
-        'Mayo',
-        'Junio',
-        'Julio',
-        'Agosto',
-        'Septiembre',
-        'Octubre',
-        'Noviembre',
-        'Diciembre',
-      ];
-      const now = new Date();
-      const monthName = monthNames[now.getMonth()];
-      const year = now.getFullYear();
-      const periodName = `${monthName} ${year}`;
-
-      await createPeriod(periodName, 'SOL');
-      Alert.alert('Éxito', `Período "${periodName}" creado`);
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo crear el período');
-      console.error(error);
-    } finally {
-      setCreatingPeriod(false);
-    }
+  // Handler para crear período desde el modal
+  const handleCreatePeriod = async (name: string, currency: Currency) => {
+    await createPeriod(name, currency);
   };
 
   // Handler para tocar un período (navegación pendiente)
@@ -108,15 +82,17 @@ export default function HomeScreen() {
         {/* Botón flotante */}
         <TouchableOpacity
           style={[styles.fab, { backgroundColor: colors.tint }]}
-          onPress={handleCreatePeriod}
-          disabled={creatingPeriod}
+          onPress={() => setModalVisible(true)}
           activeOpacity={0.8}>
-          {creatingPeriod ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <IconSymbol name="plus" size={28} color="#ffffff" />
-          )}
+          <IconSymbol name="plus" size={28} color="#ffffff" />
         </TouchableOpacity>
+
+        {/* Modal crear período */}
+        <CreatePeriodModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onCreatePeriod={handleCreatePeriod}
+        />
       </View>
     );
   }
@@ -153,15 +129,17 @@ export default function HomeScreen() {
       {/* Botón flotante */}
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.tint }]}
-        onPress={handleCreatePeriod}
-        disabled={creatingPeriod}
+        onPress={() => setModalVisible(true)}
         activeOpacity={0.8}>
-        {creatingPeriod ? (
-          <ActivityIndicator size="small" color="#ffffff" />
-        ) : (
-          <IconSymbol name="plus" size={28} color="#ffffff" />
-        )}
+        <IconSymbol name="plus" size={28} color="#ffffff" />
       </TouchableOpacity>
+
+      {/* Modal crear período */}
+      <CreatePeriodModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onCreatePeriod={handleCreatePeriod}
+      />
     </View>
   );
 }
