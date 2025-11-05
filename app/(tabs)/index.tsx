@@ -21,9 +21,11 @@ import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 import { Currency } from '@/types/expenses';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
   const { periods, loading, createPeriod } = useExpenses();
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [modalVisible, setModalVisible] = useState(false);
@@ -33,9 +35,9 @@ export default function HomeScreen() {
     await createPeriod(name, currency);
   };
 
-  // Handler para tocar un período (navegación pendiente)
-  const handlePeriodPress = (periodId: string, periodName: string) => {
-    Alert.alert('Período seleccionado', `${periodName}\n(Navegación en Fase 4)`);
+  // Handler para navegar a detalles del período
+  const handlePeriodPress = (periodId: string) => {
+    router.push(`/period/${periodId}` as any);
   };
 
   // Renderizar estado de carga
@@ -117,10 +119,7 @@ export default function HomeScreen() {
         data={periods}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <PeriodCard
-            period={item}
-            onPress={() => handlePeriodPress(item.id, item.name)}
-          />
+          <PeriodCard period={item} onPress={() => handlePeriodPress(item.id)} />
         )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
