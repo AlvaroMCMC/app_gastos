@@ -265,7 +265,7 @@ export default function PeriodDetailScreen() {
       {period.expenses.length === 0 ? (
         <View style={styles.emptyContainer}>
           <IconSymbol
-            name="cart"
+            name="dollarsign.circle"
             size={64}
             color={colors.tabIconDefault}
             style={styles.emptyIcon}
