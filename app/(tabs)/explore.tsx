@@ -23,6 +23,7 @@ import Phase53Verification from '@/tests/phase5.3-verification';
 import Phase61Verification from '@/tests/phase6.1-verification';
 import Phase62Verification from '@/tests/phase6.2-verification';
 import Phase63Verification from '@/tests/phase6.3-verification';
+import Phase64Verification from '@/tests/phase6.4-verification';
 import AllTestsVerification from '@/tests/all-tests-verification';
 
 export default function TabTwoScreen() {
@@ -143,12 +144,19 @@ export default function TabTwoScreen() {
         <Phase63Verification />
       </ThemedView>
 
+      <ThemedView style={{ padding: 20, paddingTop: 0 }}>
+        <ThemedText style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Fase 6.4: Tests de Control de Tema Claro/Oscuro
+        </ThemedText>
+        <Phase64Verification />
+      </ThemedView>
+
       <ThemedView style={{ padding: 20, paddingTop: 0, marginBottom: 20 }}>
         <ThemedText style={{ fontWeight: 'bold', marginBottom: 10, fontSize: 16, color: '#007AFF' }}>
           🔄 Tests Completos (Todas las Fases)
         </ThemedText>
         <ThemedText style={{ fontSize: 12, marginBottom: 10, opacity: 0.7 }}>
-          Ejecuta todos los tests de las fases 3.1 a 6.3 para verificar que cambios nuevos no rompan funcionalidades anteriores
+          Ejecuta todos los tests de las fases 3.1 a 6.4 para verificar que cambios nuevos no rompan funcionalidades anteriores
         </ThemedText>
         <AllTestsVerification />
       </ThemedView>

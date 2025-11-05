@@ -25,6 +25,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 import { Currency } from '@/types/expenses';
 import { useRouter } from 'expo-router';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 // Crear AnimatedPressable para el FAB
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -78,13 +79,16 @@ export default function HomeScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
-          <Text
-            style={[
-              styles.title,
-              { color: colorScheme === 'dark' ? '#ffffff' : '#000000', fontFamily: Fonts.rounded },
-            ]}>
-            Mis Períodos
-          </Text>
+          <View style={styles.headerContent}>
+            <Text
+              style={[
+                styles.title,
+                { color: colorScheme === 'dark' ? '#ffffff' : '#000000', fontFamily: Fonts.rounded },
+              ]}>
+              Mis Períodos
+            </Text>
+            <ThemeToggle />
+          </View>
         </View>
 
         <View style={styles.emptyContainer}>
@@ -125,16 +129,21 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text
-          style={[
-            styles.title,
-            { color: colorScheme === 'dark' ? '#ffffff' : '#000000', fontFamily: Fonts.rounded },
-          ]}>
-          Mis Períodos
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.tabIconDefault }]}>
-          {periods.length} {periods.length === 1 ? 'período' : 'períodos'}
-        </Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerText}>
+            <Text
+              style={[
+                styles.title,
+                { color: colorScheme === 'dark' ? '#ffffff' : '#000000', fontFamily: Fonts.rounded },
+              ]}>
+              Mis Períodos
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.tabIconDefault }]}>
+              {periods.length} {periods.length === 1 ? 'período' : 'períodos'}
+            </Text>
+          </View>
+          <ThemeToggle />
+        </View>
       </View>
 
       <FlatList
@@ -183,6 +192,14 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
     paddingBottom: 16,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerText: {
+    flex: 1,
   },
   title: {
     fontSize: 32,

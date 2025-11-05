@@ -382,6 +382,44 @@ export default function AllTestsVerification() {
         updateTestResult('6.3', 'Verificar iconos de estado vacío', 'failed', 'Error al verificar iconos');
       }
 
+      // ===================================================================
+      // FASE 6.4: Control de Tema Claro/Oscuro
+      // ===================================================================
+
+      updateTestResult('6.4', 'Verificar ThemeContext', 'running');
+      try {
+        const ThemeContextModule = require('@/contexts/ThemeContext');
+        if (ThemeContextModule.ThemeProvider && ThemeContextModule.useTheme) {
+          updateTestResult(
+            '6.4',
+            'Verificar ThemeContext',
+            'passed',
+            'ThemeProvider y useTheme disponibles para control de tema'
+          );
+        } else {
+          updateTestResult('6.4', 'Verificar ThemeContext', 'failed', 'ThemeContext no exporta correctamente');
+        }
+      } catch (error) {
+        updateTestResult('6.4', 'Verificar ThemeContext', 'failed', 'Error al importar ThemeContext');
+      }
+
+      updateTestResult('6.4', 'Verificar ThemeToggle', 'running');
+      try {
+        const ThemeToggleModule = require('@/components/ThemeToggle');
+        if (ThemeToggleModule.ThemeToggle) {
+          updateTestResult(
+            '6.4',
+            'Verificar ThemeToggle',
+            'passed',
+            'Switch de tema disponible en esquina superior derecha'
+          );
+        } else {
+          updateTestResult('6.4', 'Verificar ThemeToggle', 'failed', 'ThemeToggle no exportado');
+        }
+      } catch (error) {
+        updateTestResult('6.4', 'Verificar ThemeToggle', 'failed', 'Error al cargar ThemeToggle');
+      }
+
     } catch (error) {
       console.error('Error en tests:', error);
       updateTestResult('Error', 'Error general', 'failed', error instanceof Error ? error.message : 'Error desconocido');
