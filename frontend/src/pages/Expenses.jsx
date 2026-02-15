@@ -384,7 +384,8 @@ function Expenses() {
     // Convert UTC date to Peru time (UTC-5) and format as 24-hour
     const date = new Date(dateString);
 
-    return date.toLocaleString('es-PE', {
+    // Get date parts in Peru timezone
+    const formatter = new Intl.DateTimeFormat('es-PE', {
       timeZone: 'America/Lima',
       year: 'numeric',
       month: 'short',
@@ -393,6 +394,14 @@ function Expenses() {
       minute: '2-digit',
       hour12: false
     });
+
+    const parts = {};
+    formatter.formatToParts(date).forEach(part => {
+      parts[part.type] = part.value;
+    });
+
+    // Manually format to ensure 24-hour format
+    return `${parts.day} ${parts.month} ${parts.year}, ${parts.hour}:${parts.minute}`;
   };
 
   // Convert UTC date to Peru timezone for datetime-local input
