@@ -6,13 +6,14 @@ from datetime import timedelta
 from typing import List
 
 from database import engine, get_db, Base
-from models import User, Item, Expense, PendingInvitation, ExpenseTemplate
+from models import User, Item, Expense, PendingInvitation, ExpenseTemplate, UserItemBudget
 from schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     ItemCreate, ItemUpdate, ItemResponse,
     ExpenseCreate, ExpenseUpdate, ExpenseResponse,
     ItemParticipantAdd, ItemParticipantResponse,
-    ExpenseTemplateCreate, ExpenseTemplateUpdate, ExpenseTemplateResponse
+    ExpenseTemplateCreate, ExpenseTemplateUpdate, ExpenseTemplateResponse,
+    UserItemBudgetUpdate, UserItemBudgetResponse
 )
 from auth import (
     get_password_hash, verify_password, create_access_token,
@@ -35,6 +36,25 @@ try:
         if result.fetchone():
             print("🔄 Migrando: Eliminando columna 'emoji' de expense_templates...")
             conn.execute(text("ALTER TABLE expense_templates DROP COLUMN emoji"))
+            conn.commit()
+            print("✅ Migración completada!")
+except Exception as e:
+    print(f"⚠️  Migración: {e}")
+
+# Migración: Eliminar columnas budget de items (ahora es personal por usuario)
+try:
+    with engine.connect() as conn:
+        # Verificar si la columna budget existe
+        result = conn.execute(text("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name='items' AND column_name='budget'
+        """))
+
+        if result.fetchone():
+            print("🔄 Migrando: Eliminando columnas 'budget' de items...")
+            conn.execute(text("ALTER TABLE items DROP COLUMN budget"))
+            conn.execute(text("ALTER TABLE items DROP COLUMN budget_currency"))
             conn.commit()
             print("✅ Migración completada!")
 except Exception as e:
@@ -142,8 +162,6 @@ def get_items(
             "item_type": item.item_type,
             "owner_id": item.owner_id,
             "owner_email": item.owner.email if item.owner else None,
-            "budget": item.budget,
-            "budget_currency": item.budget_currency,
             "is_archived": item.is_archived,
             "created_at": item.created_at
         }
@@ -208,10 +226,6 @@ def update_item(
         item.name = item_update.name
     if item_update.item_type is not None:
         item.item_type = item_update.item_type
-    if item_update.budget is not None:
-        item.budget = item_update.budget
-    if item_update.budget_currency is not None:
-        item.budget_currency = item_update.budget_currency
     if item_update.is_archived is not None:
         item.is_archived = item_update.is_archived
 
@@ -235,6 +249,88 @@ def delete_item(
     db.delete(item)
     db.commit()
     return None
+
+# ============= USER ITEM BUDGET ENDPOINTS =============
+
+@app.get("/api/items/{item_id}/budget", response_model=UserItemBudgetResponse)
+def get_user_budget(
+    item_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current user's budget for a specific item"""
+    # Verificar que el item existe y el usuario tiene acceso
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    # Verificar acceso
+    if item.item_type == "personal" and item.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    elif item.item_type == "shared":
+        if item.owner_id != current_user.id and current_user not in item.participants:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Buscar presupuesto del usuario para este item
+    budget = db.query(UserItemBudget).filter(
+        UserItemBudget.user_id == current_user.id,
+        UserItemBudget.item_id == item_id
+    ).first()
+
+    # Si no existe, crear uno con valores por defecto
+    if not budget:
+        budget = UserItemBudget(
+            user_id=current_user.id,
+            item_id=item_id,
+            budget=0.0,
+            currency="soles"
+        )
+        db.add(budget)
+        db.commit()
+        db.refresh(budget)
+
+    return budget
+
+@app.put("/api/items/{item_id}/budget", response_model=UserItemBudgetResponse)
+def update_user_budget(
+    item_id: str,
+    budget_update: UserItemBudgetUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update current user's budget for a specific item"""
+    # Verificar que el item existe y el usuario tiene acceso
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    # Verificar acceso
+    if item.item_type == "personal" and item.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    elif item.item_type == "shared":
+        if item.owner_id != current_user.id and current_user not in item.participants:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Buscar o crear presupuesto
+    budget = db.query(UserItemBudget).filter(
+        UserItemBudget.user_id == current_user.id,
+        UserItemBudget.item_id == item_id
+    ).first()
+
+    if not budget:
+        budget = UserItemBudget(
+            user_id=current_user.id,
+            item_id=item_id
+        )
+        db.add(budget)
+
+    # Actualizar campos
+    budget.budget = budget_update.budget
+    budget.currency = budget_update.currency
+
+    db.commit()
+    db.refresh(budget)
+    return budget
 
 # ============= ITEM PARTICIPANTS ENDPOINTS =============
 

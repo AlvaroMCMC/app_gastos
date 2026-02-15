@@ -33,8 +33,6 @@ class ItemCreate(BaseModel):
 class ItemUpdate(BaseModel):
     name: Optional[str] = None
     item_type: Optional[str] = None
-    budget: Optional[float] = None
-    budget_currency: Optional[str] = None
     is_archived: Optional[bool] = None
 
 class ItemResponse(BaseModel):
@@ -43,8 +41,6 @@ class ItemResponse(BaseModel):
     item_type: str
     owner_id: str
     owner_email: Optional[str] = None
-    budget: float
-    budget_currency: str
     is_archived: bool
     created_at: datetime
 
@@ -125,3 +121,22 @@ class ExpenseTemplateResponse(ExpenseTemplateBase):
         json_encoders = {
             datetime: lambda v: v.strftime('%Y-%m-%dT%H:%M:%S') if v else None
         }
+
+
+# User Item Budget Schemas
+class UserItemBudgetBase(BaseModel):
+    budget: float = 0.0
+    currency: str = "soles"
+
+class UserItemBudgetUpdate(UserItemBudgetBase):
+    pass
+
+class UserItemBudgetResponse(UserItemBudgetBase):
+    id: str
+    user_id: str
+    item_id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+

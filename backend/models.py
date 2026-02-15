@@ -38,8 +38,6 @@ class Item(Base):
     name = Column(String, nullable=False)
     item_type = Column(String, nullable=False)  # "personal" o "shared"
     owner_id = Column(String, ForeignKey("users.id"), nullable=False)
-    budget = Column(Float, nullable=False, default=0.0)
-    budget_currency = Column(String, nullable=False, default="soles")
     is_archived = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -87,3 +85,17 @@ class ExpenseTemplate(Base):
 
     # Relación con usuario
     user = relationship("User", back_populates="expense_templates")
+
+class UserItemBudget(Base):
+    __tablename__ = "user_item_budgets"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    item_id = Column(String, ForeignKey("items.id"), nullable=False)
+    budget = Column(Float, nullable=False, default=0.0)
+    currency = Column(String, nullable=False, default="soles")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    # Relaciones
+    user = relationship("User")
+    item = relationship("Item")
