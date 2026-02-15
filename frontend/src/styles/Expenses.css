@@ -54,6 +54,13 @@
   color: #333;
 }
 
+.current-datetime {
+  font-size: 14px;
+  color: #666;
+  font-weight: normal;
+  margin-top: 5px;
+}
+
 .btn-manage-participants {
   padding: 8px 16px;
   background-color: #667eea;

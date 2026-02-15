@@ -94,6 +94,7 @@ function Expenses() {
   const [budgetCurrency, setBudgetCurrency] = useState('soles');
   const [expenseTemplates, setExpenseTemplates] = useState([]);
   const [showTemplateConfig, setShowTemplateConfig] = useState(false);
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   const { isOnline, updatePendingCount } = useOffline();
 
@@ -114,6 +115,15 @@ function Expenses() {
     fetchUsersAndCurrentUser();
     fetchPendingExpenses();
   }, [itemId]);
+
+  // Update clock every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchPendingExpenses = async () => {
     try {
@@ -442,6 +452,22 @@ function Expenses() {
     return `${parseInt(day)} ${monthName} ${year}, ${hour}:${minute}`;
   };
 
+  // Format current date/time in Peru timezone
+  const formatCurrentDateTime = () => {
+    const formatter = new Intl.DateTimeFormat('es-PE', {
+      timeZone: 'America/Lima',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+
+    return formatter.format(currentDateTime);
+  };
+
   const getCurrencySymbol = (currency) => {
     const symbols = {
       'soles': 'S/',
@@ -728,6 +754,7 @@ function Expenses() {
       <div className="header">
         <div className="item-info">
           <h1>{item.name}</h1>
+          <div className="current-datetime">{formatCurrentDateTime()}</div>
           <span className={`badge badge-${item.item_type}`}>
             {item.item_type === 'personal' ? 'Personal' : 'Compartido'}
           </span>
