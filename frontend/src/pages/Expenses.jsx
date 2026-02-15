@@ -36,6 +36,7 @@ const TemplateItem = ({ template, onUpdate, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(template.name);
   const [emoji, setEmoji] = useState(template.emoji);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Sincronizar estado cuando el template cambia
   useEffect(() => {
@@ -50,27 +51,48 @@ const TemplateItem = ({ template, onUpdate, onDelete }) => {
     }
     await onUpdate(template.id, { name: name.trim(), emoji });
     setIsEditing(false);
+    setShowEmojiPicker(false);
   };
 
   const handleCancel = () => {
     setName(template.name);
     setEmoji(template.emoji);
     setIsEditing(false);
+    setShowEmojiPicker(false);
+  };
+
+  const handleEmojiSelect = (selectedEmoji) => {
+    setEmoji(selectedEmoji);
+    setShowEmojiPicker(false);
   };
 
   return (
     <div className="template-item">
       {isEditing ? (
         <>
-          <select
-            value={emoji}
-            onChange={(e) => setEmoji(e.target.value)}
-            className="emoji-select"
-          >
-            {AVAILABLE_EMOJIS.map((e) => (
-              <option key={e} value={e}>{e}</option>
-            ))}
-          </select>
+          <div className="emoji-picker-container">
+            <button
+              type="button"
+              className="emoji-picker-button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            >
+              {emoji}
+            </button>
+            {showEmojiPicker && (
+              <div className="emoji-picker-grid">
+                {AVAILABLE_EMOJIS.map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    className="emoji-option"
+                    onClick={() => handleEmojiSelect(e)}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <input
             type="text"
             value={name}
