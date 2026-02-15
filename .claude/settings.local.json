@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker:*)",
+      "Bash(pyenv:*)",
+      "Bash(python -m venv:*)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(python main.py:*)",
+      "Bash(python test_connection.py:*)",
+      "Bash(python test_pg8000.py:*)",
+      "Bash(PGPASSWORD=postgres docker exec:*)",
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(sqlite3:*)",
+      "Bash(ipconfig:*)",
+      "Bash(uvicorn:*)",
+      "Bash(npm run dev:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

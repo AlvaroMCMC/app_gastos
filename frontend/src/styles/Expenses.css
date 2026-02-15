@@ -1,0 +1,981 @@
+.expenses-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  position: relative;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  font-size: 18px;
+  color: #666;
+}
+
+.btn-back {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 8px 16px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  z-index: 10;
+}
+
+.btn-back:hover {
+  background-color: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #eee;
+}
+
+.item-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex: 1;
+}
+
+.item-info h1 {
+  margin: 0;
+  color: #333;
+}
+
+.btn-manage-participants {
+  padding: 8px 16px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.btn-manage-participants:hover {
+  background-color: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.participants-emails {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.participant-email-badge {
+  padding: 6px 12px;
+  background-color: #e3f2fd;
+  color: #1976d2;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid #bbdefb;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 15px;
+  margin-bottom: 40px;
+}
+
+.summary-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.summary-card.balance-owed-to-you {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.summary-card.balance-you-owe {
+  background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+}
+
+.balance-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.balance-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.balance-item:last-of-type {
+  border-bottom: none;
+}
+
+.balance-person {
+  font-size: 14px;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+.balance-amount-small {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.balance-total {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 2px solid rgba(255, 255, 255, 0.4);
+  font-size: 18px;
+  font-weight: bold;
+  text-align: right;
+}
+
+.summary-card.budget-card {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.budget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.budget-header h3 {
+  margin: 0;
+}
+
+.btn-edit-budget {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.3);
+  color: white;
+  border: 2px solid white;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  padding: 0;
+  line-height: 1;
+}
+
+.btn-edit-budget:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.1);
+}
+
+.budget-remaining {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.remaining-label {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.remaining-amount {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.remaining-amount.negative {
+  color: #ffeb3b;
+}
+
+.summary-card h3 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.total-amount {
+  font-size: 36px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.total-count {
+  font-size: 36px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.participants-modal {
+  max-width: 600px;
+}
+
+.participants-modal h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.participants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.participant-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.participant-card.pending {
+  background: #fff8e1;
+  border: 1px dashed #ffc107;
+  opacity: 0.8;
+}
+
+.participant-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.participant-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
+}
+
+.participant-email {
+  color: #666;
+  font-size: 14px;
+}
+
+.btn-remove-participant {
+  padding: 5px 10px;
+  background-color: #fff;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.btn-remove-participant:hover {
+  background-color: #dc3545;
+  color: white;
+}
+
+.add-participant-form {
+  display: flex;
+  gap: 10px;
+  padding: 20px;
+  background: #f0f7ff;
+  border-radius: 8px;
+  border: 2px dashed #667eea;
+}
+
+.participant-email-input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.participant-email-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.btn-add-participant {
+  padding: 12px 24px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.btn-add-participant:hover {
+  background-color: #5568d3;
+}
+
+.participant-note {
+  padding: 15px;
+  background: #fff8e1;
+  border-left: 4px solid #ffc107;
+  border-radius: 4px;
+  color: #856404;
+  font-size: 14px;
+  margin: 0;
+}
+
+.expenses-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.expenses-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.expenses-header .btn-primary {
+  padding: 12px 24px;
+  white-space: nowrap;
+  width: auto;
+}
+
+.quick-expense-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+}
+
+.btn-quick {
+  padding: 10px 20px;
+  background-color: white;
+  color: #555;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-quick:hover {
+  background-color: #667eea;
+  color: white;
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+}
+
+.btn-quick:active {
+  transform: translateY(0);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: #f9f9f9;
+  border-radius: 12px;
+  border: 2px dashed #ddd;
+}
+
+.empty-state p {
+  color: #999;
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.expenses-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+.expense-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.expense-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.expense-card.pending-expense {
+  background: linear-gradient(135deg, #fff8e1 0%, #fffbf0 100%);
+  border: 2px dashed #ffa726;
+  opacity: 0.9;
+}
+
+.pending-badge-top {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #ffa726;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.expense-note {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #ffa726;
+  color: #f57c00;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.expense-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.expense-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.expense-info h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1em;
+}
+
+.participant-initials {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.initial-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  cursor: help;
+  transition: transform 0.2s;
+}
+
+.initial-badge:hover {
+  transform: scale(1.15);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+}
+
+.expense-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.payment-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.payment-banco {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.payment-efectivo {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.expense-date {
+  color: #999;
+  font-size: 13px;
+}
+
+.expense-amount {
+  font-size: 24px;
+  font-weight: bold;
+  color: #667eea;
+}
+
+.expense-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-edit {
+  padding: 8px 16px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.btn-edit:hover {
+  background-color: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-delete {
+  padding: 8px 16px;
+  background-color: #fff;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.btn-delete:hover {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Modal styles are shared with Items.css */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.modal-actions button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.btn-primary {
+  background-color: #667eea;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #5568d3;
+}
+
+.btn-primary:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: #667eea;
+  color: white;
+  border: none;
+}
+
+.btn-secondary:hover {
+  background-color: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* Button to open participant selection modal */
+.btn-select-participants {
+  width: 100%;
+  padding: 12px;
+  background-color: #f0f7ff;
+  color: #667eea;
+  border: 2px dashed #667eea;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.btn-select-participants:hover {
+  background-color: #667eea;
+  color: white;
+  border-style: solid;
+}
+
+.selected-participants-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.selected-participant-tag {
+  padding: 6px 12px;
+  background-color: #667eea;
+  color: white;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.modal-description {
+  margin: 0 0 15px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.selection-summary {
+  margin: 15px 0 0 0;
+  padding: 10px;
+  background: #e8f5e9;
+  border-left: 4px solid #4caf50;
+  border-radius: 4px;
+  color: #2e7d32;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Participant checkboxes for "selected" split type */
+.participants-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.checkbox-label:hover {
+  background: #f0f7ff;
+  border-color: #667eea;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.checkbox-label span {
+  flex: 1;
+  color: #333;
+  font-size: 15px;
+}
+
+.you-tag {
+  color: #667eea;
+  font-weight: 600;
+  font-size: 13px;
+  margin-left: 5px;
+}
+
+.validation-hint {
+  display: block;
+  margin-top: 8px;
+  color: #dc3545;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .expenses-container {
+    padding: 15px;
+    padding-top: 50px;
+  }
+
+  .btn-back {
+    top: 15px;
+    right: 15px;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+
+  .item-info {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .item-info h1 {
+    font-size: 1.5em;
+  }
+
+  .btn-manage-participants {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .participants-emails {
+    width: 100%;
+  }
+
+  /* Summary cards - 1 column on mobile */
+  .summary {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .summary-card {
+    padding: 20px;
+  }
+
+  .total-amount,
+  .total-count {
+    font-size: 28px;
+  }
+
+  /* Expenses header */
+  .expenses-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+
+  .expenses-header h2 {
+    font-size: 1.3em;
+  }
+
+  .expenses-header .btn-primary {
+    width: 100%;
+  }
+
+  /* Quick expense buttons */
+  .quick-expense-buttons {
+    padding: 15px;
+    gap: 8px;
+  }
+
+  .btn-quick {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 140px;
+    font-size: 13px;
+    padding: 10px 15px;
+  }
+
+  /* Expenses list - 1 column on mobile */
+  .expenses-list {
+    grid-template-columns: 1fr;
+  }
+
+  .expense-card {
+    padding: 15px;
+  }
+
+  .expense-amount {
+    font-size: 20px;
+  }
+
+  .expense-title-row {
+    flex-wrap: wrap;
+  }
+
+  .expense-info h3 {
+    font-size: 1em;
+  }
+
+  .initial-badge {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+
+  .expense-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .expense-actions button {
+    width: 100%;
+  }
+
+  /* Modal adjustments */
+  .modal-content {
+    width: 95%;
+    padding: 20px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+
+  .participants-modal {
+    max-width: 95%;
+  }
+
+  .add-participant-form {
+    flex-direction: column;
+    padding: 15px;
+  }
+
+  .participant-email-input {
+    width: 100%;
+  }
+
+  .btn-add-participant {
+    width: 100%;
+  }
+
+  .participant-card {
+    padding: 12px;
+  }
+
+  .btn-remove-participant {
+    white-space: nowrap;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .total-amount,
+  .total-count {
+    font-size: 24px;
+  }
+
+  .btn-quick {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+
+  .summary-card h3 {
+    font-size: 12px;
+  }
+
+  .item-info h1 {
+    font-size: 1.2em;
+  }
+}

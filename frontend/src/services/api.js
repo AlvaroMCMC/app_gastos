@@ -1,0 +1,94 @@
+import axios from 'axios';
+
+const API_URL = 'http://192.168.1.69:8000/api';
+
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Interceptor para agregar token a las peticiones
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Auth
+export const register = (email, password, name) => {
+  return api.post('/auth/register', { email, password, name });
+};
+
+export const login = (email, password) => {
+  return api.post('/auth/login', { email, password });
+};
+
+export const getMe = () => {
+  return api.get('/auth/me');
+};
+
+export const getUsers = () => {
+  return api.get('/users');
+};
+
+// Items
+export const getItems = () => {
+  return api.get('/items');
+};
+
+export const createItem = (name, item_type) => {
+  return api.post('/items', { name, item_type });
+};
+
+export const getItem = (itemId) => {
+  return api.get(`/items/${itemId}`);
+};
+
+export const updateItem = (itemId, data) => {
+  return api.put(`/items/${itemId}`, data);
+};
+
+export const deleteItem = (itemId) => {
+  return api.delete(`/items/${itemId}`);
+};
+
+// Item Participants
+export const getItemParticipants = (itemId) => {
+  return api.get(`/items/${itemId}/participants`);
+};
+
+export const addItemParticipant = (itemId, email) => {
+  return api.post(`/items/${itemId}/participants`, { email });
+};
+
+export const removeItemParticipant = (itemId, userId) => {
+  return api.delete(`/items/${itemId}/participants/${userId}`);
+};
+
+// Expenses
+export const getExpenses = (itemId) => {
+  return api.get(`/items/${itemId}/expenses`);
+};
+
+export const createExpense = (itemId, data) => {
+  return api.post(`/items/${itemId}/expenses`, data);
+};
+
+export const updateExpense = (itemId, expenseId, data) => {
+  return api.put(`/items/${itemId}/expenses/${expenseId}`, data);
+};
+
+export const deleteExpense = (itemId, expenseId) => {
+  return api.delete(`/items/${itemId}/expenses/${expenseId}`);
+};
+
+export default api;
