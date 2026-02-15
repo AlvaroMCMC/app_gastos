@@ -1063,6 +1063,17 @@
   border-radius: 6px;
 }
 
+.emoji-select {
+  width: 60px;
+  text-align: center;
+  font-size: 20px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  background: white;
+}
+
 .template-name-input {
   flex: 1;
   padding: 8px 12px;

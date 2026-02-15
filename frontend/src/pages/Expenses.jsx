@@ -22,14 +22,39 @@ import { useOffline } from '../context/OfflineContext';
 import OfflineIndicator from '../components/OfflineIndicator';
 import '../styles/Expenses.css';
 
+// Emojis predefinidos para gastos comunes
+const AVAILABLE_EMOJIS = [
+  '🍽️', '🚗', '👕', '💊', '🛒', '🎬', '🏠', '💡',
+  '☕', '🍕', '🍔', '🥗', '🚕', '🚌', '✈️', '🏨',
+  '📱', '💻', '🎮', '📚', '🎵', '⚽', '🏋️', '🎨',
+  '💇', '🧴', '🧹', '🔧', '⛽', '🅿️', '🎁', '💐',
+  '🐕', '🐈', '🌳', '🏥', '💳', '💰', '📝', '📦'
+];
+
 // Componente para item de template
 const TemplateItem = ({ template, onUpdate, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(template.name);
   const [emoji, setEmoji] = useState(template.emoji);
 
+  // Sincronizar estado cuando el template cambia
+  useEffect(() => {
+    setName(template.name);
+    setEmoji(template.emoji);
+  }, [template]);
+
   const handleSave = async () => {
-    await onUpdate(template.id, { name, emoji });
+    if (!name.trim()) {
+      alert('El nombre no puede estar vacío');
+      return;
+    }
+    await onUpdate(template.id, { name: name.trim(), emoji });
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setName(template.name);
+    setEmoji(template.emoji);
     setIsEditing(false);
   };
 
@@ -37,24 +62,26 @@ const TemplateItem = ({ template, onUpdate, onDelete }) => {
     <div className="template-item">
       {isEditing ? (
         <>
-          <input
-            type="text"
+          <select
             value={emoji}
             onChange={(e) => setEmoji(e.target.value)}
-            maxLength="2"
-            className="emoji-input"
-            placeholder="Emoji"
-          />
+            className="emoji-select"
+          >
+            {AVAILABLE_EMOJIS.map((e) => (
+              <option key={e} value={e}>{e}</option>
+            ))}
+          </select>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength="30"
             className="template-name-input"
-            placeholder="Nombre"
+            placeholder="Nombre del gasto"
+            autoFocus
           />
           <button className="btn-save-template" onClick={handleSave}>✓</button>
-          <button className="btn-cancel-template" onClick={() => setIsEditing(false)}>✗</button>
+          <button className="btn-cancel-template" onClick={handleCancel}>✗</button>
         </>
       ) : (
         <>
