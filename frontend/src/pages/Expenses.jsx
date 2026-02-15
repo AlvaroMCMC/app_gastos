@@ -709,33 +709,59 @@ function Expenses() {
       }
     });
 
-    // Agrupar por tipo y moneda
+    // Consolidar balances netos por persona y moneda
+    const netBalances = {};
+
+    Object.values(balances).forEach(balance => {
+      const key = `${balance.userId}-${balance.currency}`;
+
+      if (!netBalances[key]) {
+        netBalances[key] = {
+          userId: balance.userId,
+          currency: balance.currency,
+          amount: 0
+        };
+      }
+
+      // Si me deben, es positivo; si yo debo, es negativo
+      if (balance.type === 'owed_to_me') {
+        netBalances[key].amount += balance.amount;
+      } else {
+        netBalances[key].amount -= balance.amount;
+      }
+    });
+
+    // Separar en "te deben" y "debes" según el balance neto
     const youOwe = {};
     const owedToYou = {};
     const youOweDetails = [];
     const owedToYouDetails = [];
 
-    Object.values(balances).forEach(balance => {
-      const participant = participants.find(p => p.id === balance.userId);
+    Object.values(netBalances).forEach(netBalance => {
+      const participant = participants.find(p => p.id === netBalance.userId);
       const userName = participant?.name || participant?.email.split('@')[0] || 'Usuario';
 
-      if (balance.type === 'i_owe') {
-        if (!youOwe[balance.currency]) youOwe[balance.currency] = 0;
-        youOwe[balance.currency] += balance.amount;
-        youOweDetails.push({
-          userName,
-          currency: balance.currency,
-          amount: balance.amount
-        });
-      } else {
-        if (!owedToYou[balance.currency]) owedToYou[balance.currency] = 0;
-        owedToYou[balance.currency] += balance.amount;
+      if (netBalance.amount > 0) {
+        // Balance positivo: te deben
+        if (!owedToYou[netBalance.currency]) owedToYou[netBalance.currency] = 0;
+        owedToYou[netBalance.currency] += netBalance.amount;
         owedToYouDetails.push({
           userName,
-          currency: balance.currency,
-          amount: balance.amount
+          currency: netBalance.currency,
+          amount: netBalance.amount
+        });
+      } else if (netBalance.amount < 0) {
+        // Balance negativo: tú debes
+        const amountOwed = Math.abs(netBalance.amount);
+        if (!youOwe[netBalance.currency]) youOwe[netBalance.currency] = 0;
+        youOwe[netBalance.currency] += amountOwed;
+        youOweDetails.push({
+          userName,
+          currency: netBalance.currency,
+          amount: amountOwed
         });
       }
+      // Si amount === 0, no hay deuda (están a mano)
     });
 
     return { youOwe, owedToYou, youOweDetails, owedToYouDetails };
