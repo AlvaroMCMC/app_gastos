@@ -29,6 +29,7 @@ class User(Base):
     items = relationship("Item", back_populates="owner")
     expenses = relationship("Expense", back_populates="paid_by_user", foreign_keys="Expense.paid_by")
     shared_items = relationship("Item", secondary=item_participants, back_populates="participants")
+    expense_templates = relationship("ExpenseTemplate", back_populates="user", cascade="all, delete-orphan")
 
 class Item(Base):
     __tablename__ = "items"
@@ -74,3 +75,16 @@ class Expense(Base):
     # Relaciones
     item = relationship("Item", back_populates="expenses")
     paid_by_user = relationship("User", back_populates="expenses", foreign_keys=[paid_by])
+
+class ExpenseTemplate(Base):
+    __tablename__ = "expense_templates"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    name = Column(String, nullable=False)  # "Comida afuera"
+    emoji = Column(String, nullable=False)  # "🍽️"
+    position = Column(Integer, nullable=False, default=0)  # Orden de visualización
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    # Relación con usuario
+    user = relationship("User", back_populates="expense_templates")

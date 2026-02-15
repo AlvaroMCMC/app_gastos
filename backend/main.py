@@ -6,12 +6,13 @@ from datetime import timedelta
 from typing import List
 
 from database import engine, get_db, Base
-from models import User, Item, Expense, PendingInvitation
+from models import User, Item, Expense, PendingInvitation, ExpenseTemplate
 from schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     ItemCreate, ItemUpdate, ItemResponse,
     ExpenseCreate, ExpenseUpdate, ExpenseResponse,
-    ItemParticipantAdd, ItemParticipantResponse
+    ItemParticipantAdd, ItemParticipantResponse,
+    ExpenseTemplateCreate, ExpenseTemplateUpdate, ExpenseTemplateResponse
 )
 from auth import (
     get_password_hash, verify_password, create_access_token,
@@ -509,6 +510,145 @@ def delete_expense(
     db.delete(expense)
     db.commit()
     return None
+
+# ============================================
+# EXPENSE TEMPLATES
+# ============================================
+
+# Plantillas predefinidas (default para nuevos usuarios)
+DEFAULT_TEMPLATES = [
+    {"name": "Comida afuera", "emoji": "🍽️", "position": 0},
+    {"name": "Transporte", "emoji": "🚗", "position": 1},
+    {"name": "Ropa", "emoji": "👕", "position": 2},
+    {"name": "Farmacia", "emoji": "💊", "position": 3},
+    {"name": "Supermercado", "emoji": "🛒", "position": 4},
+    {"name": "Entretenimiento", "emoji": "🎬", "position": 5},
+]
+
+@app.get("/api/expense-templates", response_model=List[schemas.ExpenseTemplateResponse])
+def get_user_expense_templates(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Obtener plantillas de gastos del usuario. Si no tiene, crear las predefinidas."""
+
+    templates = db.query(ExpenseTemplate).filter(
+        ExpenseTemplate.user_id == current_user.id
+    ).order_by(ExpenseTemplate.position).all()
+
+    # Si el usuario no tiene plantillas, crear las predefinidas
+    if not templates:
+        for template_data in DEFAULT_TEMPLATES:
+            new_template = ExpenseTemplate(
+                user_id=current_user.id,
+                **template_data
+            )
+            db.add(new_template)
+        db.commit()
+
+        # Recargar las plantillas creadas
+        templates = db.query(ExpenseTemplate).filter(
+            ExpenseTemplate.user_id == current_user.id
+        ).order_by(ExpenseTemplate.position).all()
+
+    return templates
+
+@app.post("/api/expense-templates", response_model=schemas.ExpenseTemplateResponse)
+def create_expense_template(
+    template: schemas.ExpenseTemplateCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Crear nueva plantilla de gasto (máximo 8 por usuario)."""
+
+    # Verificar que no exceda el máximo de 8
+    template_count = db.query(ExpenseTemplate).filter(
+        ExpenseTemplate.user_id == current_user.id
+    ).count()
+
+    if template_count >= 8:
+        raise HTTPException(status_code=400, detail="Máximo 8 plantillas permitidas")
+
+    new_template = ExpenseTemplate(
+        user_id=current_user.id,
+        name=template.name,
+        emoji=template.emoji,
+        position=template.position
+    )
+    db.add(new_template)
+    db.commit()
+    db.refresh(new_template)
+
+    return new_template
+
+@app.put("/api/expense-templates/{template_id}", response_model=schemas.ExpenseTemplateResponse)
+def update_expense_template(
+    template_id: str,
+    template: schemas.ExpenseTemplateUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Actualizar plantilla de gasto."""
+
+    db_template = db.query(ExpenseTemplate).filter(
+        ExpenseTemplate.id == template_id,
+        ExpenseTemplate.user_id == current_user.id
+    ).first()
+
+    if not db_template:
+        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
+
+    # Actualizar solo los campos proporcionados
+    if template.name is not None:
+        db_template.name = template.name
+    if template.emoji is not None:
+        db_template.emoji = template.emoji
+    if template.position is not None:
+        db_template.position = template.position
+
+    db.commit()
+    db.refresh(db_template)
+
+    return db_template
+
+@app.delete("/api/expense-templates/{template_id}")
+def delete_expense_template(
+    template_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Eliminar plantilla de gasto."""
+
+    db_template = db.query(ExpenseTemplate).filter(
+        ExpenseTemplate.id == template_id,
+        ExpenseTemplate.user_id == current_user.id
+    ).first()
+
+    if not db_template:
+        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
+
+    db.delete(db_template)
+    db.commit()
+
+    return {"message": "Plantilla eliminada"}
+
+@app.post("/api/expense-templates/reorder")
+def reorder_expense_templates(
+    template_ids: List[str],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Reordenar plantillas de gastos."""
+
+    for index, template_id in enumerate(template_ids):
+        db_template = db.query(ExpenseTemplate).filter(
+            ExpenseTemplate.id == template_id,
+            ExpenseTemplate.user_id == current_user.id
+        ).first()
+
+        if db_template:
+            db_template.position = index
+
+    db.commit()
+
+    return {"message": "Plantillas reordenadas"}
 
 @app.get("/")
 def root():
