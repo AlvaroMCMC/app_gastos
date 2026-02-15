@@ -381,29 +381,26 @@ function Expenses() {
   };
 
   const formatDate = (dateString) => {
-    // Parse date as UTC and convert to Peru timezone (America/Lima, UTC-5)
+    // Convert UTC date to Peru time (UTC-5) and format as 24-hour
     const date = new Date(dateString);
 
-    // Use Intl.DateTimeFormat for more reliable timezone conversion
-    const formatter = new Intl.DateTimeFormat('es-PE', {
+    return date.toLocaleString('es-PE', {
       timeZone: 'America/Lima',
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: false
     });
-
-    return formatter.format(date);
   };
 
   // Convert UTC date to Peru timezone for datetime-local input
   const toPeruLocalDatetime = (dateString) => {
     const date = dateString ? new Date(dateString) : new Date();
 
-    // Get date parts in Peru timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
+    // Get date parts in Peru timezone using formatter
+    const formatter = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Lima',
       year: 'numeric',
       month: '2-digit',
@@ -422,24 +419,26 @@ function Expenses() {
     return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
   };
 
-  // Convert Peru local datetime to UTC ISO string for backend
+  // Convert Peru local datetime (from input) to UTC ISO string for backend
   const toUTCFromPeru = (localDatetimeString) => {
     if (!localDatetimeString) {
-      // Return current time in Peru as UTC
       return toUTCFromPeru(toPeruLocalDatetime());
     }
 
-    // Parse the datetime-local string (YYYY-MM-DDTHH:mm)
-    // This represents Peru local time (UTC-5)
+    // The input string is in format "YYYY-MM-DDTHH:mm" representing Peru time
+    // We need to convert this to UTC by adding 5 hours
+
+    // Parse the components
     const [datePart, timePart] = localDatetimeString.split('T');
     const [year, month, day] = datePart.split('-').map(Number);
     const [hours, minutes] = timePart.split(':').map(Number);
 
-    // Create date in UTC by manually constructing the UTC timestamp
-    // Peru is UTC-5, so we add 5 hours to convert Peru time to UTC
-    const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes) + (5 * 60 * 60 * 1000));
+    // Create a Date object representing this Peru time
+    // Method: Create the date with an explicit -05:00 offset
+    const isoStringWithOffset = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00-05:00`;
 
-    return utcDate.toISOString();
+    const date = new Date(isoStringWithOffset);
+    return date.toISOString();
   };
 
   const getCurrencySymbol = (currency) => {
