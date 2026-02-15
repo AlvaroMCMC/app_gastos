@@ -22,7 +22,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^http:\/\/192\.168\.1\.69:8000\/api\/items$/,
+            urlPattern: /^https?:\/\/.*\/api\/items$/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'items-cache',
@@ -36,7 +36,7 @@ export default defineConfig({
             }
           },
           {
-            urlPattern: /^http:\/\/192\.168\.1\.69:8000\/api\/items\/.*\/expenses$/,
+            urlPattern: /^https?:\/\/.*\/api\/items\/.*\/expenses$/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'expenses-cache',
@@ -50,7 +50,7 @@ export default defineConfig({
             }
           },
           {
-            urlPattern: /^http:\/\/192\.168\.1\.69:8000\/api\/users$/,
+            urlPattern: /^https?:\/\/.*\/api\/users$/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'users-cache',
