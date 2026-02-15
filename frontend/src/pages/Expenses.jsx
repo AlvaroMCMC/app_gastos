@@ -380,49 +380,26 @@ function Expenses() {
     return totals;
   };
 
-  const formatDate = (dateString) => {
-    // Convert UTC date to Peru time (UTC-5) and format as 24-hour
-    const date = new Date(dateString);
+  // Convert Peru datetime string to UTC (for sending to backend)
+  const toUTCFromPeru = (localDatetimeString) => {
+    if (!localDatetimeString) {
+      return toUTCFromPeru(toPeruLocalDatetime());
+    }
 
-    console.log('🟢 formatDate - Input (UTC):', dateString);
-
-    // Get date/time in Peru timezone using en-CA locale for consistent 24h format
-    const peruDateStr = date.toLocaleString('en-CA', {
-      timeZone: 'America/Lima',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-
-    console.log('🟢 formatDate - Peru string:', peruDateStr);
-
-    // Parse the result: "2024-02-15, 13:45:00"
-    const [datePart, timePart] = peruDateStr.split(', ');
-    const [year, month, day] = datePart.split('-');
-    const [hour, minute] = timePart.split(':');
-
-    // Month names in Spanish
-    const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun',
-                        'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-    const monthName = monthNames[parseInt(month) - 1];
-
-    // Format: "15 feb 2024, 13:45"
-    const formatted = `${parseInt(day)} ${monthName} ${year}, ${hour}:${minute}`;
-
-    console.log('🟢 formatDate - Output (Peru display):', formatted);
-
-    return formatted;
+    // Input: "2024-02-15T13:45" (Peru time)
+    // Create ISO string with Peru offset: "2024-02-15T13:45:00-05:00"
+    const isoWithOffset = `${localDatetimeString}:00-05:00`;
+    const date = new Date(isoWithOffset);
+    return date.toISOString(); // Returns UTC: "2024-02-15T18:45:00.000Z"
   };
 
-  // Convert UTC date to Peru timezone for datetime-local input
-  const toPeruLocalDatetime = (dateString) => {
-    const date = dateString ? new Date(dateString) : new Date();
+  // Convert UTC datetime to Peru timezone string (for displaying)
+  const fromUTCToPeru = (utcDateString) => {
+    // Input: "2024-02-15T18:45:00.000Z" (UTC)
+    // Output: "2024-02-15T13:45" (Peru time)
+    const date = new Date(utcDateString);
 
-    // Get date parts in Peru timezone using formatter
+    // Get components in Peru timezone
     const formatter = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Lima',
       year: 'numeric',
@@ -438,36 +415,31 @@ function Expenses() {
       parts[part.type] = part.value;
     });
 
-    // Format for datetime-local input (YYYY-MM-DDTHH:mm)
     return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
   };
 
-  // Convert Peru local datetime (from input) to UTC ISO string for backend
-  const toUTCFromPeru = (localDatetimeString) => {
-    if (!localDatetimeString) {
-      return toUTCFromPeru(toPeruLocalDatetime());
-    }
+  // Convert UTC date to Peru timezone for datetime-local input
+  const toPeruLocalDatetime = (dateString) => {
+    return fromUTCToPeru(dateString || new Date().toISOString());
+  };
 
-    // The input string is in format "YYYY-MM-DDTHH:mm" representing Peru time
-    // We need to convert this to UTC by adding 5 hours
+  // Format UTC date for display in Peru timezone (24-hour format)
+  const formatDate = (dateString) => {
+    // Convert UTC to Peru datetime string
+    const peruDatetime = fromUTCToPeru(dateString);
 
-    // Parse the components
-    const [datePart, timePart] = localDatetimeString.split('T');
-    const [year, month, day] = datePart.split('-').map(Number);
-    const [hours, minutes] = timePart.split(':').map(Number);
+    // Parse: "2024-02-15T13:45"
+    const [datePart, timePart] = peruDatetime.split('T');
+    const [year, month, day] = datePart.split('-');
+    const [hour, minute] = timePart.split(':');
 
-    // Create a Date object representing this Peru time
-    // Method: Create the date with an explicit -05:00 offset
-    const isoStringWithOffset = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00-05:00`;
+    // Month names in Spanish
+    const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun',
+                        'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const monthName = monthNames[parseInt(month) - 1];
 
-    const date = new Date(isoStringWithOffset);
-    const utcISO = date.toISOString();
-
-    console.log('🔵 toUTCFromPeru - Input (Peru):', localDatetimeString);
-    console.log('🔵 toUTCFromPeru - With offset:', isoStringWithOffset);
-    console.log('🔵 toUTCFromPeru - Output (UTC):', utcISO);
-
-    return utcISO;
+    // Return: "15 feb 2024, 13:45"
+    return `${parseInt(day)} ${monthName} ${year}, ${hour}:${minute}`;
   };
 
   const getCurrencySymbol = (currency) => {
