@@ -525,7 +525,7 @@ DEFAULT_TEMPLATES = [
     {"name": "Entretenimiento", "emoji": "🎬", "position": 5},
 ]
 
-@app.get("/api/expense-templates", response_model=List[schemas.ExpenseTemplateResponse])
+@app.get("/api/expense-templates", response_model=List[ExpenseTemplateResponse])
 def get_user_expense_templates(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Obtener plantillas de gastos del usuario. Si no tiene, crear las predefinidas."""
 
@@ -550,9 +550,9 @@ def get_user_expense_templates(current_user: User = Depends(get_current_user), d
 
     return templates
 
-@app.post("/api/expense-templates", response_model=schemas.ExpenseTemplateResponse)
+@app.post("/api/expense-templates", response_model=ExpenseTemplateResponse)
 def create_expense_template(
-    template: schemas.ExpenseTemplateCreate,
+    template: ExpenseTemplateCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -578,10 +578,10 @@ def create_expense_template(
 
     return new_template
 
-@app.put("/api/expense-templates/{template_id}", response_model=schemas.ExpenseTemplateResponse)
+@app.put("/api/expense-templates/{template_id}", response_model=ExpenseTemplateResponse)
 def update_expense_template(
     template_id: str,
-    template: schemas.ExpenseTemplateUpdate,
+    template: ExpenseTemplateUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
