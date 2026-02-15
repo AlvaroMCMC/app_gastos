@@ -1,5 +1,18 @@
 services:
   # ============================================
+  # DATABASE - PostgreSQL
+  # ============================================
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: app_gastos
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # ============================================
   # BACKEND - FastAPI
   # ============================================
   backend:
@@ -8,11 +21,13 @@ services:
       dockerfile: Dockerfile
     environment:
       # Configurar estas variables en Easypanel:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@db:5432/app_gastos
       SECRET_KEY: ${SECRET_KEY}
       ALGORITHM: ${ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       ENVIRONMENT: ${ENVIRONMENT:-production}
+    depends_on:
+      - db
     restart: unless-stopped
 
   # ============================================
@@ -27,3 +42,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  postgres_data:
