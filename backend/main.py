@@ -587,7 +587,6 @@ def create_expense_template(
     new_template = ExpenseTemplate(
         user_id=current_user.id,
         name=template.name,
-        emoji=template.emoji,
         position=template.position
     )
     db.add(new_template)
@@ -616,8 +615,6 @@ def update_expense_template(
     # Actualizar solo los campos proporcionados
     if template.name is not None:
         db_template.name = template.name
-    if template.emoji is not None:
-        db_template.emoji = template.emoji
     if template.position is not None:
         db_template.position = template.position
 
