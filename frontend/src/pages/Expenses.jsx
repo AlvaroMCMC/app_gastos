@@ -383,7 +383,9 @@ function Expenses() {
   const formatDate = (dateString) => {
     // Parse date as UTC and convert to Peru timezone (America/Lima, UTC-5)
     const date = new Date(dateString);
-    return date.toLocaleString('es-PE', {
+
+    // Use Intl.DateTimeFormat for more reliable timezone conversion
+    const formatter = new Intl.DateTimeFormat('es-PE', {
       timeZone: 'America/Lima',
       year: 'numeric',
       month: 'short',
@@ -392,6 +394,8 @@ function Expenses() {
       minute: '2-digit',
       hour12: true
     });
+
+    return formatter.format(date);
   };
 
   // Convert UTC date to Peru timezone for datetime-local input
@@ -426,13 +430,14 @@ function Expenses() {
     }
 
     // Parse the datetime-local string (YYYY-MM-DDTHH:mm)
-    // This represents Peru local time
-    const dateStr = localDatetimeString.replace('T', ' ') + ':00';
+    // This represents Peru local time (UTC-5)
+    const [datePart, timePart] = localDatetimeString.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
 
-    // Create a date string that explicitly states it's in Peru timezone
-    // Then convert to UTC
-    const peruDateStr = dateStr + ' GMT-0500';
-    const utcDate = new Date(peruDateStr);
+    // Create date in UTC by manually constructing the UTC timestamp
+    // Peru is UTC-5, so we add 5 hours to convert Peru time to UTC
+    const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes) + (5 * 60 * 60 * 1000));
 
     return utcDate.toISOString();
   };
