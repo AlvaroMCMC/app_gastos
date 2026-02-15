@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.local
+README.md
+QUICKSTART.md
+prd.md
+capturas/
+backend/venv/
+backend/env/
+backend/*.db
+backend/*.sqlite3
+frontend/node_modules/
+frontend/dist/
+.claude/

@@ -192,6 +192,71 @@ npm run build
 # Los archivos estarán en frontend/dist/
 ```
 
+## 🚀 Deployment en Easypanel
+
+### Opción 1: Docker Compose (Recomendado)
+
+1. En Easypanel, crea un nuevo servicio de tipo "GitHub"
+2. Conecta el repositorio `AlvaroMCMC/app_gastos`
+3. Selecciona "Docker Compose"
+4. Configura variables de entorno:
+   - `DB_PASSWORD`: Contraseña de PostgreSQL
+   - `SECRET_KEY`: Clave JWT segura (generada aleatoriamente)
+   - `VITE_API_URL`: URL del backend (ej: `https://tu-backend.easypanel.app/api`)
+5. Deploy automático desde `master` branch
+
+### Opción 2: Usando PostgreSQL de Easypanel
+
+Si ya tienes PostgreSQL configurado en Easypanel:
+
+1. Comenta el servicio `db` en `docker-compose.yml`:
+   ```yaml
+   # db:
+   #   image: postgres:15-alpine
+   #   ...
+   ```
+2. En variables de entorno del backend, usa:
+   ```env
+   DATABASE_URL=postgresql://postgres:PASSWORD@deep-data_db_appgastos:5432/app_gastos
+   ```
+
+### Variables de Entorno Necesarias
+
+**Backend:**
+- `DATABASE_URL`: Conexión a PostgreSQL
+- `SECRET_KEY`: Clave secreta para JWT (genera una aleatoria)
+- `ALGORITHM`: HS256 (por defecto)
+- `ACCESS_TOKEN_EXPIRE_MINUTES`: 30 (por defecto)
+- `ENVIRONMENT`: production
+
+**Frontend:**
+- `VITE_API_URL`: URL completa del backend API (ej: `https://backend.easypanel.app/api`)
+
+### Testing Local con Docker Compose
+
+```bash
+# Crear archivo .env en la raíz con:
+# DB_PASSWORD=tu_password
+# SECRET_KEY=tu_secret_key
+# VITE_API_URL=http://localhost:8000/api
+
+# Construir y ejecutar
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f
+
+# Detener
+docker-compose down
+```
+
+### Verificación del Deployment
+
+1. Backend: `https://tu-backend.easypanel.app/docs` debe mostrar Swagger UI
+2. Frontend: `https://tu-frontend.easypanel.app` debe cargar la app
+3. Crear un usuario y un gasto para verificar la conexión a PostgreSQL
+4. Las tablas se crean automáticamente al iniciar el backend
+
 ## Licencia
 
 MIT
