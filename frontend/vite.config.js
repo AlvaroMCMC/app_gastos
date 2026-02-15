@@ -22,6 +22,20 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
+            urlPattern: /^https?:\/\/.*\/api\/auth\/me$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'auth-cache',
+              expiration: {
+                maxEntries: 1,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
             urlPattern: /^https?:\/\/.*\/api\/items$/,
             handler: 'NetworkFirst',
             options: {

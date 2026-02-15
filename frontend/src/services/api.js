@@ -23,6 +23,29 @@ api.interceptors.request.use(
   }
 );
 
+// Interceptor para manejar errores de red vs errores de autenticación
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Error de red (offline, timeout, etc.) - no hay respuesta del servidor
+    if (!error.response) {
+      console.warn('Error de red detectado:', error.message);
+      // No hacer nada - dejar que componentes manejen offline mode
+      return Promise.reject(error);
+    }
+
+    // Error 401 - Token inválido/expirado
+    if (error.response.status === 401) {
+      console.warn('Sesión expirada - limpiar auth');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 // Auth
 export const register = (email, password, name) => {
   return api.post('/auth/register', { email, password, name });
