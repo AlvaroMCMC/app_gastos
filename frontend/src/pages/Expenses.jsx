@@ -386,13 +386,44 @@ function Expenses() {
 
   const calculateTotalsByCurrency = () => {
     const totals = {};
+
     expenses.forEach(expense => {
       const currency = expense.currency || 'soles';
       if (!totals[currency]) {
         totals[currency] = 0;
       }
-      totals[currency] += expense.amount;
+
+      // Calculate what the current user owes for this expense
+      let userAmount = 0;
+
+      if (item?.item_type === 'personal') {
+        // In personal items, all expenses count
+        userAmount = expense.amount;
+      } else if (item?.item_type === 'shared') {
+        // In shared items, only count what the user owes
+        if (expense.split_type === 'assigned') {
+          // Assigned to specific person
+          if (expense.assigned_to === currentUser?.id) {
+            userAmount = expense.amount;
+          }
+        } else if (expense.split_type === 'divided') {
+          // Divided equally among all participants
+          const participantCount = participants.length;
+          if (participantCount > 0) {
+            userAmount = expense.amount / participantCount;
+          }
+        } else if (expense.split_type === 'selected') {
+          // Divided among selected participants
+          const selectedIds = expense.selected_participants ? expense.selected_participants.split(',') : [];
+          if (selectedIds.includes(currentUser?.id)) {
+            userAmount = expense.amount / selectedIds.length;
+          }
+        }
+      }
+
+      totals[currency] += userAmount;
     });
+
     return totals;
   };
 
