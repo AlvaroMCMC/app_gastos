@@ -548,10 +548,35 @@
   font-size: 13px;
 }
 
+.expense-amount-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
 .expense-amount {
   font-size: 24px;
   font-weight: bold;
   color: #667eea;
+}
+
+.expense-balance {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.expense-balance.lent {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.expense-balance.owe {
+  background-color: #fff3e0;
+  color: #e65100;
 }
 
 .expense-actions {

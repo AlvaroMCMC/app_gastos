@@ -629,6 +629,60 @@ function Expenses() {
     return colors[Math.abs(hash) % colors.length];
   };
 
+  // Calculate what user lent or owes for a specific expense
+  const calculateExpenseBalance = (expense) => {
+    if (!currentUser || item?.item_type === 'personal') {
+      return null; // No mostrar en items personales
+    }
+
+    const participantCount = participants.length;
+
+    if (expense.split_type === 'assigned') {
+      // Asignado a una persona específica
+      if (expense.paid_by === currentUser.id && expense.assigned_to !== currentUser.id) {
+        // Yo pagué, otro debe todo
+        return { type: 'lent', amount: expense.amount };
+      } else if (expense.assigned_to === currentUser.id && expense.paid_by !== currentUser.id) {
+        // Otro pagó, yo debo todo
+        return { type: 'owe', amount: expense.amount };
+      }
+    } else if (expense.split_type === 'divided') {
+      // Dividido entre todos
+      const myShare = expense.amount / participantCount;
+
+      if (expense.paid_by === currentUser.id) {
+        // Yo pagué, presté (total - mi parte)
+        const lentAmount = expense.amount - myShare;
+        return lentAmount > 0 ? { type: 'lent', amount: lentAmount } : null;
+      } else {
+        // Otro pagó, debo mi parte
+        return { type: 'owe', amount: myShare };
+      }
+    } else if (expense.split_type === 'selected' && expense.selected_participants) {
+      // Dividido entre seleccionados
+      const selectedIds = expense.selected_participants.split(',');
+      const numSelected = selectedIds.length;
+      const sharePerPerson = expense.amount / numSelected;
+
+      if (expense.paid_by === currentUser.id) {
+        // Yo pagué
+        if (selectedIds.includes(currentUser.id)) {
+          // Estoy incluido, presté (total - mi parte)
+          const lentAmount = expense.amount - sharePerPerson;
+          return lentAmount > 0 ? { type: 'lent', amount: lentAmount } : null;
+        } else {
+          // No estoy incluido, presté todo
+          return { type: 'lent', amount: expense.amount };
+        }
+      } else if (selectedIds.includes(currentUser.id)) {
+        // Otro pagó y estoy incluido, debo mi parte
+        return { type: 'owe', amount: sharePerPerson };
+      }
+    }
+
+    return null;
+  };
+
   const calculateBalances = () => {
     if (!currentUser || !expenses.length || !participants.length) return { youOwe: {}, owedToYou: {}, youOweDetails: [], owedToYouDetails: [] };
 
@@ -1045,7 +1099,21 @@ function Expenses() {
                       <span className="expense-date">{formatDate(expense.date)}</span>
                     </div>
                   </div>
-                  <div className="expense-amount">{getCurrencySymbol(expense.currency)}{expense.amount.toFixed(2)}</div>
+                  <div className="expense-amount-container">
+                    <div className="expense-amount">{getCurrencySymbol(expense.currency)}{expense.amount.toFixed(2)}</div>
+                    {(() => {
+                      const balance = calculateExpenseBalance(expense);
+                      if (balance) {
+                        return (
+                          <div className={`expense-balance ${balance.type}`}>
+                            {balance.type === 'lent' ? '💸 Prestaste: ' : '💳 Debes: '}
+                            {getCurrencySymbol(expense.currency)}{balance.amount.toFixed(2)}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
                 </div>
                 <div className="expense-actions">
                   <button
