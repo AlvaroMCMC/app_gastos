@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from datetime import timedelta
 from typing import List
 
@@ -21,6 +21,24 @@ from auth import (
 
 # Crear tablas
 Base.metadata.create_all(bind=engine)
+
+# Migración: Eliminar columna emoji de expense_templates si existe
+try:
+    with engine.connect() as conn:
+        # Verificar si la columna emoji existe
+        result = conn.execute(text("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name='expense_templates' AND column_name='emoji'
+        """))
+
+        if result.fetchone():
+            print("🔄 Migrando: Eliminando columna 'emoji' de expense_templates...")
+            conn.execute(text("ALTER TABLE expense_templates DROP COLUMN emoji"))
+            conn.commit()
+            print("✅ Migración completada!")
+except Exception as e:
+    print(f"⚠️  Migración: {e}")
 
 app = FastAPI(title="App Gastos API")
 
