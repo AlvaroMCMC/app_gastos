@@ -114,4 +114,25 @@ export const deleteExpense = (itemId, expenseId) => {
   return api.delete(`/items/${itemId}/expenses/${expenseId}`);
 };
 
+// Expense Templates
+export const getExpenseTemplates = () => {
+  return api.get('/expense-templates');
+};
+
+export const createExpenseTemplate = (data) => {
+  return api.post('/expense-templates', data);
+};
+
+export const updateExpenseTemplate = (templateId, data) => {
+  return api.put(`/expense-templates/${templateId}`, data);
+};
+
+export const deleteExpenseTemplate = (templateId) => {
+  return api.delete(`/expense-templates/${templateId}`);
+};
+
+export const reorderExpenseTemplates = (templateIds) => {
+  return api.post('/expense-templates/reorder', templateIds);
+};
+
 export default api;

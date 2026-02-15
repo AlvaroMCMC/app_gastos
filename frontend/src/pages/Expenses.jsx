@@ -11,12 +11,63 @@ import {
   getItemParticipants,
   addItemParticipant,
   removeItemParticipant,
-  updateItem
+  updateItem,
+  getExpenseTemplates,
+  createExpenseTemplate,
+  updateExpenseTemplate,
+  deleteExpenseTemplate
 } from '../services/api';
 import { savePendingExpense, getPendingExpensesByItem } from '../utils/offlineDB';
 import { useOffline } from '../context/OfflineContext';
 import OfflineIndicator from '../components/OfflineIndicator';
 import '../styles/Expenses.css';
+
+// Componente para item de template
+const TemplateItem = ({ template, onUpdate, onDelete }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(template.name);
+  const [emoji, setEmoji] = useState(template.emoji);
+
+  const handleSave = async () => {
+    await onUpdate(template.id, { name, emoji });
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="template-item">
+      {isEditing ? (
+        <>
+          <input
+            type="text"
+            value={emoji}
+            onChange={(e) => setEmoji(e.target.value)}
+            maxLength="2"
+            className="emoji-input"
+            placeholder="Emoji"
+          />
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength="30"
+            className="template-name-input"
+            placeholder="Nombre"
+          />
+          <button className="btn-save-template" onClick={handleSave}>✓</button>
+          <button className="btn-cancel-template" onClick={() => setIsEditing(false)}>✗</button>
+        </>
+      ) : (
+        <>
+          <span className="template-preview">
+            {template.emoji} {template.name}
+          </span>
+          <button className="btn-edit-template" onClick={() => setIsEditing(true)}>✏️</button>
+          <button className="btn-delete-template" onClick={() => onDelete(template.id)}>🗑️</button>
+        </>
+      )}
+    </div>
+  );
+};
 
 function Expenses() {
   const { itemId } = useParams();
@@ -37,6 +88,8 @@ function Expenses() {
   const [showSelectParticipantsModal, setShowSelectParticipantsModal] = useState(false);
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetCurrency, setBudgetCurrency] = useState('soles');
+  const [expenseTemplates, setExpenseTemplates] = useState([]);
+  const [showTemplateConfig, setShowTemplateConfig] = useState(false);
 
   const { isOnline, updatePendingCount } = useOffline();
 
@@ -75,12 +128,14 @@ function Expenses() {
 
   const fetchItemAndExpenses = async () => {
     try {
-      const [itemResponse, expensesResponse] = await Promise.all([
+      const [itemResponse, expensesResponse, templatesResponse] = await Promise.all([
         getItem(itemId),
-        getExpenses(itemId)
+        getExpenses(itemId),
+        getExpenseTemplates()
       ]);
       setItem(itemResponse.data);
       setExpenses(expensesResponse.data);
+      setExpenseTemplates(templatesResponse.data);
     } catch (error) {
       console.error('Error fetching data:', error);
       alert('Error al cargar los datos');
@@ -569,6 +624,44 @@ function Expenses() {
     return { youOwe, owedToYou, youOweDetails, owedToYouDetails };
   };
 
+  // Funciones de manejo de templates
+  const handleAddTemplate = async () => {
+    try {
+      const newTemplate = {
+        name: "Nuevo gasto",
+        emoji: "📝",
+        position: expenseTemplates.length
+      };
+
+      const response = await createExpenseTemplate(newTemplate);
+      setExpenseTemplates([...expenseTemplates, response.data]);
+    } catch (error) {
+      alert(error.response?.data?.detail || "Error al crear plantilla");
+    }
+  };
+
+  const handleUpdateTemplate = async (templateId, data) => {
+    try {
+      const response = await updateExpenseTemplate(templateId, data);
+      setExpenseTemplates(expenseTemplates.map(t =>
+        t.id === templateId ? response.data : t
+      ));
+    } catch (error) {
+      alert("Error al actualizar plantilla");
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId) => {
+    if (!confirm("¿Eliminar esta plantilla?")) return;
+
+    try {
+      await deleteExpenseTemplate(templateId);
+      setExpenseTemplates(expenseTemplates.filter(t => t.id !== templateId));
+    } catch (error) {
+      alert("Error al eliminar plantilla");
+    }
+  };
+
   if (!item) {
     return <div className="loading">Cargando...</div>;
   }
@@ -711,25 +804,33 @@ function Expenses() {
         </button>
       </div>
 
+      <div className="quick-expense-header">
+        <h4>Gastos Comunes</h4>
+        <button
+          className="btn-config-templates"
+          onClick={() => setShowTemplateConfig(true)}
+          title="Configurar gastos comunes"
+        >
+          ⚙️
+        </button>
+      </div>
+
       <div className="quick-expense-buttons">
-        <button onClick={() => handleOpenModal(null, 'Comida afuera')} className="btn-quick">
-          🍽️ Comida afuera
-        </button>
-        <button onClick={() => handleOpenModal(null, 'Transporte')} className="btn-quick">
-          🚗 Transporte
-        </button>
-        <button onClick={() => handleOpenModal(null, 'Ropa')} className="btn-quick">
-          👕 Ropa
-        </button>
-        <button onClick={() => handleOpenModal(null, 'Farmacia')} className="btn-quick">
-          💊 Farmacia
-        </button>
-        <button onClick={() => handleOpenModal(null, 'Supermercado')} className="btn-quick">
-          🛒 Supermercado
-        </button>
-        <button onClick={() => handleOpenModal(null, 'Entretenimiento')} className="btn-quick">
-          🎬 Entretenimiento
-        </button>
+        {expenseTemplates.map((template) => (
+          <button
+            key={template.id}
+            onClick={() => handleOpenModal(null, template.name)}
+            className="btn-quick"
+          >
+            {template.emoji} {template.name}
+          </button>
+        ))}
+
+        {expenseTemplates.length === 0 && (
+          <p className="no-templates-message">
+            No tienes gastos comunes configurados. Haz clic en ⚙️ para agregar.
+          </p>
+        )}
       </div>
 
       {expenses.length === 0 && pendingExpenses.length === 0 ? (
@@ -1133,6 +1234,39 @@ function Expenses() {
                 disabled={formData.selected_participants?.length === 0}
               >
                 Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de configuración de plantillas */}
+      {showTemplateConfig && (
+        <div className="modal-overlay" onClick={() => setShowTemplateConfig(false)}>
+          <div className="modal-content template-config-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Configurar Gastos Comunes</h3>
+            <p className="template-subtitle">Máximo 8 plantillas</p>
+
+            <div className="template-list">
+              {expenseTemplates.map((template) => (
+                <TemplateItem
+                  key={template.id}
+                  template={template}
+                  onUpdate={handleUpdateTemplate}
+                  onDelete={handleDeleteTemplate}
+                />
+              ))}
+            </div>
+
+            {expenseTemplates.length < 8 && (
+              <button className="btn-add-template" onClick={handleAddTemplate}>
+                + Agregar Plantilla
+              </button>
+            )}
+
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowTemplateConfig(false)}>
+                Cerrar
               </button>
             </div>
           </div>
