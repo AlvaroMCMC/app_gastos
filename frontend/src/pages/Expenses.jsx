@@ -22,26 +22,14 @@ import { useOffline } from '../context/OfflineContext';
 import OfflineIndicator from '../components/OfflineIndicator';
 import '../styles/Expenses.css';
 
-// Emojis predefinidos para gastos comunes
-const AVAILABLE_EMOJIS = [
-  '🍽️', '🚗', '👕', '💊', '🛒', '🎬', '🏠', '💡',
-  '☕', '🍕', '🍔', '🥗', '🚕', '🚌', '✈️', '🏨',
-  '📱', '💻', '🎮', '📚', '🎵', '⚽', '🏋️', '🎨',
-  '💇', '🧴', '🧹', '🔧', '⛽', '🅿️', '🎁', '💐',
-  '🐕', '🐈', '🌳', '🏥', '💳', '💰', '📝', '📦'
-];
-
 // Componente para item de template
 const TemplateItem = ({ template, onUpdate, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(template.name);
-  const [emoji, setEmoji] = useState(template.emoji);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Sincronizar estado cuando el template cambia
   useEffect(() => {
     setName(template.name);
-    setEmoji(template.emoji);
   }, [template]);
 
   const handleSave = async () => {
@@ -49,50 +37,19 @@ const TemplateItem = ({ template, onUpdate, onDelete }) => {
       alert('El nombre no puede estar vacío');
       return;
     }
-    await onUpdate(template.id, { name: name.trim(), emoji });
+    await onUpdate(template.id, { name: name.trim() });
     setIsEditing(false);
-    setShowEmojiPicker(false);
   };
 
   const handleCancel = () => {
     setName(template.name);
-    setEmoji(template.emoji);
     setIsEditing(false);
-    setShowEmojiPicker(false);
-  };
-
-  const handleEmojiSelect = (selectedEmoji) => {
-    setEmoji(selectedEmoji);
-    setShowEmojiPicker(false);
   };
 
   return (
     <div className="template-item">
       {isEditing ? (
         <>
-          <div className="emoji-picker-container">
-            <button
-              type="button"
-              className="emoji-picker-button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            >
-              {emoji}
-            </button>
-            {showEmojiPicker && (
-              <div className="emoji-picker-grid">
-                {AVAILABLE_EMOJIS.map((e) => (
-                  <button
-                    key={e}
-                    type="button"
-                    className="emoji-option"
-                    onClick={() => handleEmojiSelect(e)}
-                  >
-                    {e}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           <input
             type="text"
             value={name}
@@ -107,9 +64,7 @@ const TemplateItem = ({ template, onUpdate, onDelete }) => {
         </>
       ) : (
         <>
-          <span className="template-preview">
-            {template.emoji} {template.name}
-          </span>
+          <span className="template-preview">{template.name}</span>
           <button className="btn-edit-template" onClick={() => setIsEditing(true)}>✏️</button>
           <button className="btn-delete-template" onClick={() => onDelete(template.id)}>🗑️</button>
         </>
@@ -678,7 +633,6 @@ function Expenses() {
     try {
       const newTemplate = {
         name: "Nuevo gasto",
-        emoji: "📝",
         position: expenseTemplates.length
       };
 
@@ -871,7 +825,7 @@ function Expenses() {
             onClick={() => handleOpenModal(null, template.name)}
             className="btn-quick"
           >
-            {template.emoji} {template.name}
+            {template.name}
           </button>
         ))}
 

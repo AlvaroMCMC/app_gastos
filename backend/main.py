@@ -517,12 +517,12 @@ def delete_expense(
 
 # Plantillas predefinidas (default para nuevos usuarios)
 DEFAULT_TEMPLATES = [
-    {"name": "Comida afuera", "emoji": "🍽️", "position": 0},
-    {"name": "Transporte", "emoji": "🚗", "position": 1},
-    {"name": "Ropa", "emoji": "👕", "position": 2},
-    {"name": "Farmacia", "emoji": "💊", "position": 3},
-    {"name": "Supermercado", "emoji": "🛒", "position": 4},
-    {"name": "Entretenimiento", "emoji": "🎬", "position": 5},
+    {"name": "Comida afuera", "position": 0},
+    {"name": "Transporte", "position": 1},
+    {"name": "Ropa", "position": 2},
+    {"name": "Farmacia", "position": 3},
+    {"name": "Supermercado", "position": 4},
+    {"name": "Entretenimiento", "position": 5},
 ]
 
 @app.get("/api/expense-templates", response_model=List[ExpenseTemplateResponse])

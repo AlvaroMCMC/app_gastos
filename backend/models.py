@@ -82,7 +82,6 @@ class ExpenseTemplate(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     name = Column(String, nullable=False)  # "Comida afuera"
-    emoji = Column(String, nullable=False)  # "🍽️"
     position = Column(Integer, nullable=False, default=0)  # Orden de visualización
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

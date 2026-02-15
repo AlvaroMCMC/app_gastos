@@ -106,7 +106,6 @@ class ExpenseResponse(BaseModel):
 # Expense Template Schemas
 class ExpenseTemplateBase(BaseModel):
     name: str
-    emoji: str
     position: int = 0
 
 class ExpenseTemplateCreate(ExpenseTemplateBase):
@@ -114,7 +113,6 @@ class ExpenseTemplateCreate(ExpenseTemplateBase):
 
 class ExpenseTemplateUpdate(BaseModel):
     name: Optional[str] = None
-    emoji: Optional[str] = None
     position: Optional[int] = None
 
 class ExpenseTemplateResponse(ExpenseTemplateBase):
