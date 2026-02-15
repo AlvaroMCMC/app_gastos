@@ -632,7 +632,9 @@ function Expenses() {
   const calculateBalances = () => {
     if (!currentUser || !expenses.length || !participants.length) return { youOwe: {}, owedToYou: {}, youOweDetails: [], owedToYouDetails: [] };
 
-    const balances = {};
+    // Usar dos mapas separados para evitar sobreescribir tipos
+    const owedToMeMap = {}; // Lo que me deben
+    const iOweMap = {};     // Lo que yo debo
 
     // Usar los participantes oficiales del item
     const participantIds = participants.map(p => p.id);
@@ -650,36 +652,36 @@ function Expenses() {
           participantIds.forEach(participantId => {
             if (participantId !== currentUser.id) {
               const key = `${participantId}-${currency}`;
-              if (!balances[key]) {
-                balances[key] = { userId: participantId, currency, amount: 0, type: 'owed_to_me' };
+              if (!owedToMeMap[key]) {
+                owedToMeMap[key] = { userId: participantId, currency, amount: 0 };
               }
-              balances[key].amount += sharePerPerson;
+              owedToMeMap[key].amount += sharePerPerson;
             }
           });
         } else {
           // Otro pagó, yo debo mi parte
           const key = `${expense.paid_by}-${currency}`;
-          if (!balances[key]) {
-            balances[key] = { userId: expense.paid_by, currency, amount: 0, type: 'i_owe' };
+          if (!iOweMap[key]) {
+            iOweMap[key] = { userId: expense.paid_by, currency, amount: 0 };
           }
-          balances[key].amount += sharePerPerson;
+          iOweMap[key].amount += sharePerPerson;
         }
       } else if (expense.split_type === 'assigned' && expense.assigned_to) {
         // Asignado a una persona específica
         if (expense.paid_by === currentUser.id && expense.assigned_to !== currentUser.id) {
           // Yo pagué, la persona asignada me debe todo
           const key = `${expense.assigned_to}-${currency}`;
-          if (!balances[key]) {
-            balances[key] = { userId: expense.assigned_to, currency, amount: 0, type: 'owed_to_me' };
+          if (!owedToMeMap[key]) {
+            owedToMeMap[key] = { userId: expense.assigned_to, currency, amount: 0 };
           }
-          balances[key].amount += expense.amount;
+          owedToMeMap[key].amount += expense.amount;
         } else if (expense.assigned_to === currentUser.id && expense.paid_by !== currentUser.id) {
           // Otro pagó, yo debo todo
           const key = `${expense.paid_by}-${currency}`;
-          if (!balances[key]) {
-            balances[key] = { userId: expense.paid_by, currency, amount: 0, type: 'i_owe' };
+          if (!iOweMap[key]) {
+            iOweMap[key] = { userId: expense.paid_by, currency, amount: 0 };
           }
-          balances[key].amount += expense.amount;
+          iOweMap[key].amount += expense.amount;
         }
       } else if (expense.split_type === 'selected' && expense.selected_participants) {
         // Dividir entre participantes seleccionados
@@ -692,19 +694,19 @@ function Expenses() {
           selectedIds.forEach(participantId => {
             if (participantId !== currentUser.id) {
               const key = `${participantId}-${currency}`;
-              if (!balances[key]) {
-                balances[key] = { userId: participantId, currency, amount: 0, type: 'owed_to_me' };
+              if (!owedToMeMap[key]) {
+                owedToMeMap[key] = { userId: participantId, currency, amount: 0 };
               }
-              balances[key].amount += sharePerPerson;
+              owedToMeMap[key].amount += sharePerPerson;
             }
           });
         } else if (selectedIds.includes(currentUser.id)) {
           // Otro pagó y yo estoy entre los seleccionados, debo mi parte
           const key = `${expense.paid_by}-${currency}`;
-          if (!balances[key]) {
-            balances[key] = { userId: expense.paid_by, currency, amount: 0, type: 'i_owe' };
+          if (!iOweMap[key]) {
+            iOweMap[key] = { userId: expense.paid_by, currency, amount: 0 };
           }
-          balances[key].amount += sharePerPerson;
+          iOweMap[key].amount += sharePerPerson;
         }
       }
     });
@@ -712,9 +714,9 @@ function Expenses() {
     // Consolidar balances netos por persona y moneda
     const netBalances = {};
 
-    Object.values(balances).forEach(balance => {
+    // Procesar lo que me deben
+    Object.values(owedToMeMap).forEach(balance => {
       const key = `${balance.userId}-${balance.currency}`;
-
       if (!netBalances[key]) {
         netBalances[key] = {
           userId: balance.userId,
@@ -722,13 +724,20 @@ function Expenses() {
           amount: 0
         };
       }
+      netBalances[key].amount += balance.amount; // Positivo
+    });
 
-      // Si me deben, es positivo; si yo debo, es negativo
-      if (balance.type === 'owed_to_me') {
-        netBalances[key].amount += balance.amount;
-      } else {
-        netBalances[key].amount -= balance.amount;
+    // Procesar lo que yo debo
+    Object.values(iOweMap).forEach(balance => {
+      const key = `${balance.userId}-${balance.currency}`;
+      if (!netBalances[key]) {
+        netBalances[key] = {
+          userId: balance.userId,
+          currency: balance.currency,
+          amount: 0
+        };
       }
+      netBalances[key].amount -= balance.amount; // Negativo
     });
 
     // Separar en "te deben" y "debes" según el balance neto
