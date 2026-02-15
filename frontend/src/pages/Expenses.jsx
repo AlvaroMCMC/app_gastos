@@ -106,7 +106,7 @@ function Expenses() {
     split_type: 'divided',
     assigned_to: '',
     selected_participants: [],
-    date: new Date().toISOString().slice(0, 16)
+    date: ''
   });
 
   useEffect(() => {
@@ -241,7 +241,7 @@ function Expenses() {
         split_type: expense.split_type || 'divided',
         assigned_to: expense.assigned_to || '',
         selected_participants: expense.selected_participants ? expense.selected_participants.split(',') : [],
-        date: new Date(expense.date).toISOString().slice(0, 16)
+        date: toPeruLocalDatetime(expense.date)
       });
     } else {
       setEditingExpense(null);
@@ -254,7 +254,7 @@ function Expenses() {
         split_type: 'divided',
         assigned_to: '',
         selected_participants: [],
-        date: new Date().toISOString().slice(0, 16)
+        date: toPeruLocalDatetime()
       });
     }
     setShowModal(true);
@@ -275,7 +275,7 @@ function Expenses() {
         description: formData.description,
         payment_method: formData.payment_method,
         currency: formData.currency,
-        date: formData.date
+        date: toUTCFromPeru(formData.date)
       };
 
       // Solo incluir campos de gastos compartidos si el item es compartido
@@ -381,15 +381,48 @@ function Expenses() {
   };
 
   const formatDate = (dateString) => {
-    // Parse as local time, not UTC
-    const date = new Date(dateString.replace('Z', ''));
-    return date.toLocaleDateString('es-ES', {
+    // Parse date as UTC and convert to Peru timezone (America/Lima, UTC-5)
+    const date = new Date(dateString);
+    return date.toLocaleString('es-PE', {
+      timeZone: 'America/Lima',
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Convert UTC date to Peru timezone for datetime-local input
+  const toPeruLocalDatetime = (dateString) => {
+    const date = dateString ? new Date(dateString) : new Date();
+    // Convert to Peru timezone
+    const peruDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/Lima' }));
+    // Format for datetime-local input (YYYY-MM-DDTHH:mm)
+    const year = peruDate.getFullYear();
+    const month = String(peruDate.getMonth() + 1).padStart(2, '0');
+    const day = String(peruDate.getDate()).padStart(2, '0');
+    const hours = String(peruDate.getHours()).padStart(2, '0');
+    const minutes = String(peruDate.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Convert Peru local datetime to UTC ISO string for backend
+  const toUTCFromPeru = (localDatetimeString) => {
+    if (!localDatetimeString) return new Date().toISOString();
+    // Parse as Peru local time (UTC-5)
+    // The datetime-local input gives us a string like "2024-01-15T14:30"
+    // We need to interpret this as Peru time and convert to UTC
+    const [datePart, timePart] = localDatetimeString.split('T');
+    const [year, month, day] = datePart.split('-');
+    const [hours, minutes] = timePart.split(':');
+
+    // Create date in Peru timezone (UTC-5)
+    // Add 5 hours to convert Peru time to UTC
+    const peruDate = new Date(year, month - 1, day, hours, minutes);
+    const utcDate = new Date(peruDate.getTime() + (5 * 60 * 60 * 1000));
+
+    return utcDate.toISOString();
   };
 
   const getCurrencySymbol = (currency) => {
