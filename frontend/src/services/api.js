@@ -97,6 +97,15 @@ export const removeItemParticipant = (itemId, userId) => {
   return api.delete(`/items/${itemId}/participants/${userId}`);
 };
 
+// User Item Budget
+export const getUserBudget = (itemId) => {
+  return api.get(`/items/${itemId}/budget`);
+};
+
+export const updateUserBudget = (itemId, budget, currency) => {
+  return api.put(`/items/${itemId}/budget`, { budget, currency });
+};
+
 // Expenses
 export const getExpenses = (itemId) => {
   return api.get(`/items/${itemId}/expenses`);

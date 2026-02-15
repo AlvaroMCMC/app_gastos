@@ -12,6 +12,8 @@ import {
   addItemParticipant,
   removeItemParticipant,
   updateItem,
+  getUserBudget,
+  updateUserBudget,
   getExpenseTemplates,
   createExpenseTemplate,
   updateExpenseTemplate,
@@ -90,6 +92,7 @@ function Expenses() {
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showSelectParticipantsModal, setShowSelectParticipantsModal] = useState(false);
+  const [userBudget, setUserBudget] = useState(null);
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetCurrency, setBudgetCurrency] = useState('soles');
   const [expenseTemplates, setExpenseTemplates] = useState([]);
@@ -142,13 +145,15 @@ function Expenses() {
 
   const fetchItemAndExpenses = async () => {
     try {
-      const [itemResponse, expensesResponse, templatesResponse] = await Promise.all([
+      const [itemResponse, expensesResponse, budgetResponse, templatesResponse] = await Promise.all([
         getItem(itemId),
         getExpenses(itemId),
+        getUserBudget(itemId),
         getExpenseTemplates()
       ]);
       setItem(itemResponse.data);
       setExpenses(expensesResponse.data);
+      setUserBudget(budgetResponse.data);
       setExpenseTemplates(templatesResponse.data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -208,8 +213,8 @@ function Expenses() {
   };
 
   const handleOpenBudgetModal = () => {
-    setBudgetAmount(item?.budget || '');
-    setBudgetCurrency(item?.budget_currency || 'soles');
+    setBudgetAmount(userBudget?.budget || '');
+    setBudgetCurrency(userBudget?.currency || 'soles');
     setShowBudgetModal(true);
   };
 
@@ -217,12 +222,13 @@ function Expenses() {
     e.preventDefault();
 
     try {
-      await updateItem(itemId, {
-        budget: parseFloat(budgetAmount) || 0,
-        budget_currency: budgetCurrency
-      });
+      const response = await updateUserBudget(
+        itemId,
+        parseFloat(budgetAmount) || 0,
+        budgetCurrency
+      );
+      setUserBudget(response.data);
       setShowBudgetModal(false);
-      fetchItemAndExpenses();
     } catch (error) {
       console.error('Error saving budget:', error);
       alert('Error al guardar el presupuesto');
@@ -230,13 +236,13 @@ function Expenses() {
   };
 
   const calculateRemaining = () => {
-    if (!item) return 0;
+    if (!userBudget) return 0;
 
-    const budgetCurr = item.budget_currency || 'soles';
+    const budgetCurr = userBudget.currency || 'soles';
     const totals = calculateTotalsByCurrency();
     const totalSpent = totals[budgetCurr] || 0;
 
-    return (item.budget || 0) - totalSpent;
+    return (userBudget.budget || 0) - totalSpent;
   };
 
   const handleOpenModal = (expense = null, quickDescription = null) => {
@@ -798,13 +804,13 @@ function Expenses() {
             </button>
           </div>
           <p className="total-amount">
-            {getCurrencySymbol(item?.budget_currency || 'soles')}
-            {(item?.budget || 0).toFixed(2)}
+            {getCurrencySymbol(userBudget?.currency || 'soles')}
+            {(userBudget?.budget || 0).toFixed(2)}
           </p>
           <div className="budget-remaining">
             <span className="remaining-label">Queda:</span>
             <span className={`remaining-amount ${calculateRemaining() < 0 ? 'negative' : ''}`}>
-              {getCurrencySymbol(item?.budget_currency || 'soles')}
+              {getCurrencySymbol(userBudget?.currency || 'soles')}
               {calculateRemaining().toFixed(2)}
             </span>
           </div>
