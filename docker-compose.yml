@@ -26,8 +26,6 @@ services:
       ALGORITHM: ${ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       ENVIRONMENT: ${ENVIRONMENT:-production}
-    ports:
-      - "8000:8000"
     depends_on:
       - db
     restart: unless-stopped
@@ -41,8 +39,6 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL}
-    ports:
-      - "80:80"
     depends_on:
       - backend
     restart: unless-stopped
