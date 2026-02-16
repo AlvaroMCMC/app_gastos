@@ -314,6 +314,7 @@ function Expenses() {
           return;
         }
         await updateExpense(itemId, editingExpense.id, data);
+        fetchItemAndExpenses(); // Recargar gastos después de actualizar
       } else {
         // Creación: permitir offline
         if (!isOnline) {
