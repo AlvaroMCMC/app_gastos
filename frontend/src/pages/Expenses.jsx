@@ -905,12 +905,12 @@ function Expenses() {
       </div>
 
       <div className="summary">
-        {Object.entries(calculateTotalsByCurrency()).map(([currency, total]) => (
-          <div key={currency} className="summary-card">
-            <h3>Total gastos</h3>
-            <p className="total-amount">{getCurrencySymbol(currency)}{total.toFixed(2)}</p>
-          </div>
-        ))}
+        <div className="summary-card">
+          <h3>Total gastos</h3>
+          {Object.entries(calculateTotalsByCurrency()).map(([currency, total]) => (
+            <p key={currency} className="total-amount">{getCurrencySymbol(currency)}{total.toFixed(2)}</p>
+          ))}
+        </div>
         <div className="summary-card">
           <h3>Total de Gastos</h3>
           <p className="total-count">{expenses.length}</p>
