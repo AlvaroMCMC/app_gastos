@@ -947,15 +947,13 @@ function Expenses() {
                 {calculateRemaining().toFixed(2)}
               </span>
             </div>
-            {item?.item_type === 'shared' && (
-              <div className="budget-remaining-item">
-                <span className="remaining-label">Balance final:</span>
-                <span className={`remaining-amount ${calculateFinalBalance() < 0 ? 'negative' : ''}`}>
-                  {getCurrencySymbol(userBudget?.currency || 'soles')}
-                  {calculateFinalBalance().toFixed(2)}
-                </span>
-              </div>
-            )}
+            <div className="budget-remaining-item">
+              <span className="remaining-label">Balance final:</span>
+              <span className={`remaining-amount ${calculateFinalBalance() < 0 ? 'negative' : ''}`}>
+                {getCurrencySymbol(userBudget?.currency || 'soles')}
+                {calculateFinalBalance().toFixed(2)}
+              </span>
+            </div>
           </div>
         </div>
 
