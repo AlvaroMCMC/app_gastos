@@ -245,17 +245,6 @@ function Expenses() {
     return (userBudget.budget || 0) - totalSpent;
   };
 
-  const calculateFinalBalance = () => {
-    const remaining = calculateRemaining();
-    const budgetCurr = userBudget?.currency || 'soles';
-    const { youOwe, owedToYou } = calculateBalances();
-
-    const totalOwedToMe = owedToYou[budgetCurr] || 0;
-    const totalIOwe = youOwe[budgetCurr] || 0;
-
-    return remaining + totalOwedToMe - totalIOwe;
-  };
-
   const handleOpenModal = (expense = null, quickDescription = null) => {
     if (expense) {
       setEditingExpense(expense);
@@ -940,20 +929,11 @@ function Expenses() {
             {(userBudget?.budget || 0).toFixed(2)}
           </p>
           <div className="budget-remaining">
-            <div className="budget-remaining-item">
-              <span className="remaining-label">Queda:</span>
-              <span className={`remaining-amount ${calculateRemaining() < 0 ? 'negative' : ''}`}>
-                {getCurrencySymbol(userBudget?.currency || 'soles')}
-                {calculateRemaining().toFixed(2)}
-              </span>
-            </div>
-            <div className="budget-remaining-item">
-              <span className="remaining-label">Balance final:</span>
-              <span className={`remaining-amount ${calculateFinalBalance() < 0 ? 'negative' : ''}`}>
-                {getCurrencySymbol(userBudget?.currency || 'soles')}
-                {calculateFinalBalance().toFixed(2)}
-              </span>
-            </div>
+            <span className="remaining-label">Queda:</span>
+            <span className={`remaining-amount ${calculateRemaining() < 0 ? 'negative' : ''}`}>
+              {getCurrencySymbol(userBudget?.currency || 'soles')}
+              {calculateRemaining().toFixed(2)}
+            </span>
           </div>
         </div>
 

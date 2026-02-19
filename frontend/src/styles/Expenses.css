@@ -202,24 +202,17 @@
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.3);
   display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.budget-remaining-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .remaining-label {
-  font-size: 12px;
-  opacity: 0.85;
+  font-size: 14px;
+  opacity: 0.9;
 }
 
 .remaining-amount {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: bold;
 }
 
