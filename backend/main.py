@@ -60,6 +60,40 @@ try:
 except Exception as e:
     print(f"⚠️  Migración: {e}")
 
+# Migración: Agregar ON DELETE CASCADE al FK de user_item_budgets
+try:
+    with engine.connect() as conn:
+        # Verificar si la tabla existe
+        result = conn.execute(text("""
+            SELECT constraint_name
+            FROM information_schema.table_constraints
+            WHERE table_name='user_item_budgets'
+            AND constraint_type='FOREIGN KEY'
+            AND constraint_name LIKE '%item_id%'
+        """))
+        constraint = result.fetchone()
+        if constraint:
+            constraint_name = constraint[0]
+            # Verificar si ya tiene CASCADE
+            cascade_check = conn.execute(text(f"""
+                SELECT delete_rule
+                FROM information_schema.referential_constraints
+                WHERE constraint_name='{constraint_name}'
+            """))
+            rule = cascade_check.fetchone()
+            if rule and rule[0] != 'CASCADE':
+                print("🔄 Migrando: Agregando ON DELETE CASCADE a user_item_budgets...")
+                conn.execute(text(f"ALTER TABLE user_item_budgets DROP CONSTRAINT {constraint_name}"))
+                conn.execute(text("""
+                    ALTER TABLE user_item_budgets
+                    ADD CONSTRAINT user_item_budgets_item_id_fkey
+                    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+                """))
+                conn.commit()
+                print("✅ Migración completada!")
+except Exception as e:
+    print(f"⚠️  Migración cascade: {e}")
+
 app = FastAPI(title="App Gastos API")
 
 # CORS
@@ -245,6 +279,9 @@ def delete_item(
     ).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
+
+    # Eliminar presupuestos personales del item antes de borrarlo
+    db.query(UserItemBudget).filter(UserItemBudget.item_id == item_id).delete()
 
     db.delete(item)
     db.commit()
