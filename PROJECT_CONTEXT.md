@@ -59,6 +59,7 @@ Actualizar este archivo **solo cuando haya cambios importantes**:
 - 2026-03-21: Se crea este archivo único de contexto para onboarding rápido de cualquier modelo de IA.
 - 2026-03-21: Se formaliza este archivo como fuente única de verdad y se añade snapshot funcional.
 - 2026-03-21: Migraciones destructivas (`DROP COLUMN`) quedan deshabilitadas por defecto. Solo se ejecutan con `ALLOW_DESTRUCTIVE_MIGRATIONS=true`.
+- 2026-03-21: Corregido y desplegado el orden automático de gastos por item (más nuevo a más antiguo), validado en producción.
 
 ## Checklist rápido para IA
 1. Leer este archivo completo.
