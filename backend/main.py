@@ -35,11 +35,16 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 SUMMARY_CATEGORIES = [
     "alimentacion",
+    "supermercado",
     "transporte",
     "hogar",
     "salud",
     "entretenimiento",
+    "suscripcion streaming",
     "ropa",
+    "tecnologia",
+    "gatas",
+    "ahorro",
     "servicios",
     "educacion",
     "viajes",
@@ -47,13 +52,18 @@ SUMMARY_CATEGORIES = [
 ]
 
 RULE_CATEGORY_KEYWORDS = {
-    "alimentacion": ["comida", "restaurante", "almuerzo", "cena", "desayuno", "delivery", "supermercado", "mercado", "snack", "cafe"],
+    "supermercado": ["vea", "mass", "plaza vea", "mercado", "supermercado", "wong", "metro", "tottus", "vivanda"],
+    "suscripcion streaming": ["spotify", "netflix", "prime", "amazon prime", "hbo", "disney+", "streaming"],
+    "gatas": ["gatas", "gata", "arena", "veterinaria", "comida gato", "comida para gato", "cat food", "petshop"],
+    "tecnologia": ["iphone", "celular", "laptop", "tablet", "tecnologia", "audifonos", "smartwatch", "monitor"],
+    "ahorro": ["junta", "ahorro"],
+    "alimentacion": ["comida", "restaurante", "almuerzo", "cena", "desayuno", "delivery", "snack", "cafe", "huevos", "tuberculos"],
     "transporte": ["uber", "taxi", "bus", "metropolitano", "pasaje", "gasolina", "peaje", "estacionamiento", "movilidad"],
     "hogar": ["alquiler", "renta", "mantenimiento", "limpieza", "mueble", "electrodomestico", "hogar"],
     "salud": ["farmacia", "medicina", "doctor", "clinica", "salud", "seguro", "dentista"],
-    "entretenimiento": ["cine", "netflix", "spotify", "juego", "fiesta", "bar", "entretenimiento", "salida"],
+    "entretenimiento": ["cine", "juego", "fiesta", "bar", "entretenimiento", "salida"],
     "ropa": ["ropa", "zapato", "zapatilla", "camisa", "pantalon", "polera", "vestido"],
-    "servicios": ["luz", "agua", "internet", "telefono", "celular", "servicio", "suscripcion"],
+    "servicios": ["luz", "agua", "internet", "telefono", "servicio", "suscripcion"],
     "educacion": ["curso", "universidad", "colegio", "libro", "educacion", "capacitacion"],
     "viajes": ["hotel", "vuelo", "pasaje aereo", "viaje", "airbnb", "equipaje", "turismo"],
 }
