@@ -17,7 +17,9 @@ import {
   getExpenseTemplates,
   createExpenseTemplate,
   updateExpenseTemplate,
-  deleteExpenseTemplate
+  deleteExpenseTemplate,
+  getItems,
+  toggleExpenseSettled
 } from '../services/api';
 import { savePendingExpense, getPendingExpensesByItem } from '../utils/offlineDB';
 import { useOffline } from '../context/OfflineContext';
@@ -98,6 +100,7 @@ function Expenses() {
   const [expenseTemplates, setExpenseTemplates] = useState([]);
   const [showTemplateConfig, setShowTemplateConfig] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
+  const [userItems, setUserItems] = useState([]);
 
   const { isOnline, updatePendingCount } = useOffline();
 
@@ -110,7 +113,11 @@ function Expenses() {
     split_type: 'divided',
     assigned_to: '',
     selected_participants: [],
-    date: ''
+    date: '',
+    is_installment: false,
+    installment_number: '',
+    installment_total: '',
+    next_item_id: ''
   });
 
   useEffect(() => {
@@ -145,16 +152,22 @@ function Expenses() {
 
   const fetchItemAndExpenses = async () => {
     try {
-      const [itemResponse, expensesResponse, budgetResponse, templatesResponse] = await Promise.all([
+      const [itemResponse, expensesResponse, budgetResponse, templatesResponse, itemsResponse] = await Promise.all([
         getItem(itemId),
         getExpenses(itemId),
         getUserBudget(itemId),
-        getExpenseTemplates()
+        getExpenseTemplates(),
+        getItems()
       ]);
       setItem(itemResponse.data);
-      setExpenses(expensesResponse.data);
+      const sorted = [...expensesResponse.data].sort((a, b) => {
+        const diff = new Date(b.date) - new Date(a.date);
+        return diff !== 0 ? diff : new Date(b.created_at) - new Date(a.created_at);
+      });
+      setExpenses(sorted);
       setUserBudget(budgetResponse.data);
       setExpenseTemplates(templatesResponse.data);
+      setUserItems(itemsResponse.data);
     } catch (error) {
       console.error('Error fetching data:', error);
       alert('Error al cargar los datos');
@@ -257,7 +270,11 @@ function Expenses() {
         split_type: expense.split_type || 'divided',
         assigned_to: expense.assigned_to || '',
         selected_participants: expense.selected_participants ? expense.selected_participants.split(',') : [],
-        date: toPeruLocalDatetime(expense.date)
+        date: toPeruLocalDatetime(expense.date),
+        is_installment: expense.is_installment || false,
+        installment_number: expense.installment_number || '',
+        installment_total: expense.installment_total || '',
+        next_item_id: ''
       });
     } else {
       setEditingExpense(null);
@@ -270,7 +287,11 @@ function Expenses() {
         split_type: 'divided',
         assigned_to: '',
         selected_participants: [],
-        date: toPeruLocalDatetime()
+        date: toPeruLocalDatetime(),
+        is_installment: false,
+        installment_number: '',
+        installment_total: '',
+        next_item_id: ''
       });
     }
     setShowModal(true);
@@ -293,6 +314,19 @@ function Expenses() {
         currency: formData.currency,
         date: toUTCFromPeru(formData.date)
       };
+
+      // Cuotas
+      if (formData.is_installment && formData.installment_number && formData.installment_total) {
+        data.is_installment = true;
+        data.installment_number = parseInt(formData.installment_number);
+        data.installment_total = parseInt(formData.installment_total);
+        if (editingExpense?.installment_group_id) {
+          data.installment_group_id = editingExpense.installment_group_id;
+        }
+        if (!editingExpense && data.installment_number < data.installment_total) {
+          data.next_item_id = formData.next_item_id || null;
+        }
+      }
 
       // Solo incluir campos de gastos compartidos si el item es compartido
       if (item?.item_type === 'shared') {
@@ -336,6 +370,16 @@ function Expenses() {
       alert('Error al guardar el gasto');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleSettled = async (expenseId) => {
+    try {
+      const res = await toggleExpenseSettled(itemId, expenseId);
+      setExpenses(prev => prev.map(e => e.id === expenseId ? res.data : e));
+    } catch (error) {
+      console.error('Error toggling settled:', error);
+      alert('Error al cambiar estado del gasto');
     }
   };
 
@@ -385,10 +429,12 @@ function Expenses() {
     });
   };
 
+  const activeExpenses = expenses.filter(e => !e.is_settled);
+
   const calculateTotalsByCurrency = () => {
     const totals = {};
 
-    expenses.forEach(expense => {
+    activeExpenses.forEach(expense => {
       const currency = expense.currency || 'soles';
       if (!totals[currency]) {
         totals[currency] = 0;
@@ -685,7 +731,7 @@ function Expenses() {
   };
 
   const calculateBalances = () => {
-    if (!currentUser || !expenses.length || !participants.length) return { youOwe: {}, owedToYou: {}, youOweDetails: [], owedToYouDetails: [] };
+    if (!currentUser || !activeExpenses.length || !participants.length) return { youOwe: {}, owedToYou: {}, youOweDetails: [], owedToYouDetails: [] };
 
     // Usar dos mapas separados para evitar sobreescribir tipos
     const owedToMeMap = {}; // Lo que me deben
@@ -695,7 +741,7 @@ function Expenses() {
     const participantIds = participants.map(p => p.id);
     const numParticipants = participantIds.length;
 
-    expenses.forEach(expense => {
+    activeExpenses.forEach(expense => {
       const currency = expense.currency || 'soles';
 
       if (expense.split_type === 'divided') {
@@ -1076,11 +1122,16 @@ function Expenses() {
             const initialsMap = item?.item_type === 'shared' ? generateUniqueInitials(participants) : {};
 
             return (
-              <div key={expense.id} className="expense-card">
+              <div key={expense.id} className={`expense-card ${expense.is_settled ? 'expense-settled' : ''}`}>
                 <div className="expense-main">
                   <div className="expense-info">
                     <div className="expense-title-row">
                       <h3>{expense.description}</h3>
+                      {expense.is_installment && expense.installment_number && expense.installment_total && (
+                        <span className="installment-badge">
+                          Cuota {expense.installment_number}/{expense.installment_total}
+                        </span>
+                      )}
                       {item?.item_type === 'shared' && participantIds.length > 0 && (
                         <div className="participant-initials">
                           {participantIds.map(participantId => (
@@ -1102,7 +1153,7 @@ function Expenses() {
                   </div>
                   <div className="expense-amount-container">
                     <div className="expense-amount">{getCurrencySymbol(expense.currency)}{expense.amount.toFixed(2)}</div>
-                    {(() => {
+                    {!expense.is_settled && (() => {
                       const balance = calculateExpenseBalance(expense);
                       if (balance) {
                         return (
@@ -1117,6 +1168,12 @@ function Expenses() {
                   </div>
                 </div>
                 <div className="expense-actions">
+                  <button
+                    onClick={() => handleToggleSettled(expense.id)}
+                    className={`btn-settle ${expense.is_settled ? 'settled' : ''}`}
+                  >
+                    {expense.is_settled ? '✓ Saldado' : 'Saldar'}
+                  </button>
                   <button
                     onClick={() => handleOpenModal(expense)}
                     className="btn-edit"
@@ -1287,6 +1344,73 @@ function Expenses() {
                   required
                 />
               </div>
+
+              {/* Sección de cuotas */}
+              <div className="form-group form-group-toggle">
+                <label className="toggle-label">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_installment}
+                    onChange={e => setFormData({
+                      ...formData,
+                      is_installment: e.target.checked,
+                      installment_number: e.target.checked ? (formData.installment_number || 1) : '',
+                      installment_total: e.target.checked ? formData.installment_total : '',
+                      next_item_id: ''
+                    })}
+                  />
+                  Pago en cuotas
+                </label>
+              </div>
+
+              {formData.is_installment && (
+                <div className="installment-section">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Cuota N°</label>
+                      <input
+                        type="number"
+                        min="1"
+                        name="installment_number"
+                        value={formData.installment_number}
+                        onChange={handleChange}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>De</label>
+                      <input
+                        type="number"
+                        min="1"
+                        name="installment_total"
+                        value={formData.installment_total}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
+                  {!editingExpense && parseInt(formData.installment_number) < parseInt(formData.installment_total) && (
+                    <div className="form-group">
+                      <label>Próxima cuota va a</label>
+                      <select
+                        name="next_item_id"
+                        value={formData.next_item_id}
+                        onChange={handleChange}
+                      >
+                        <option value="">Crear item automáticamente</option>
+                        {userItems
+                          .filter(i => i.id !== itemId && !i.is_archived)
+                          .map(i => (
+                            <option key={i.id} value={i.id}>{i.name}</option>
+                          ))}
+                      </select>
+                      <small>
+                        {formData.next_item_id
+                          ? 'La siguiente cuota se creará en el item seleccionado'
+                          : `Se creará el item "${item?.name} - Cuota ${parseInt(formData.installment_number || 0) + 1}"`}
+                      </small>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="modal-actions">
                 <button

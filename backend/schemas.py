@@ -67,6 +67,12 @@ class ExpenseCreate(BaseModel):
     assigned_to: Optional[str] = None  # ID del usuario al que se asigna (si split_type es "assigned")
     selected_participants: Optional[List[str]] = None  # IDs de participantes (si split_type es "selected")
     date: Optional[str] = None  # Accept date as string from frontend
+    is_installment: bool = False
+    installment_number: Optional[int] = None
+    installment_total: Optional[int] = None
+    installment_group_id: Optional[str] = None
+    next_item_id: Optional[str] = None  # request-only: item existente para siguiente cuota
+    is_settled: bool = False
 
 class ExpenseUpdate(BaseModel):
     amount: Optional[float] = None
@@ -78,6 +84,11 @@ class ExpenseUpdate(BaseModel):
     assigned_to: Optional[str] = None
     selected_participants: Optional[List[str]] = None
     date: Optional[str] = None  # Accept date as string
+    is_installment: Optional[bool] = None
+    installment_number: Optional[int] = None
+    installment_total: Optional[int] = None
+    installment_group_id: Optional[str] = None
+    is_settled: Optional[bool] = None
 
 class ExpenseResponse(BaseModel):
     id: str
@@ -92,6 +103,11 @@ class ExpenseResponse(BaseModel):
     selected_participants: Optional[str] = None  # Stored as comma-separated string
     date: datetime
     created_at: datetime
+    is_installment: bool = False
+    installment_number: Optional[int] = None
+    installment_total: Optional[int] = None
+    installment_group_id: Optional[str] = None
+    is_settled: bool = False
 
     class Config:
         from_attributes = True

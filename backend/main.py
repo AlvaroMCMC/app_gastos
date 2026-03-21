@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, text
 from datetime import timedelta
 from typing import List
+import os
 
-from database import engine, get_db, Base
+from database import engine, get_db, Base, DATABASE_URL
 from models import User, Item, Expense, PendingInvitation, ExpenseTemplate, UserItemBudget
 from schemas import (
     UserCreate, UserLogin, UserResponse, Token,
@@ -23,76 +24,95 @@ from auth import (
 # Crear tablas
 Base.metadata.create_all(bind=engine)
 
-# Migración: Eliminar columna emoji de expense_templates si existe
-try:
-    with engine.connect() as conn:
-        # Verificar si la columna emoji existe
-        result = conn.execute(text("""
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_name='expense_templates' AND column_name='emoji'
-        """))
+IS_SQLITE = DATABASE_URL.startswith("sqlite")
+ALLOW_DESTRUCTIVE_MIGRATIONS = os.getenv("ALLOW_DESTRUCTIVE_MIGRATIONS", "false").lower() == "true"
 
-        if result.fetchone():
-            print("🔄 Migrando: Eliminando columna 'emoji' de expense_templates...")
-            conn.execute(text("ALTER TABLE expense_templates DROP COLUMN emoji"))
-            conn.commit()
-            print("✅ Migración completada!")
-except Exception as e:
-    print(f"⚠️  Migración: {e}")
+def column_exists(conn, table, column):
+    """Verifica si una columna existe — compatible con SQLite y PostgreSQL."""
+    if IS_SQLITE:
+        result = conn.execute(text(f"PRAGMA table_info({table})"))
+        return any(row[1] == column for row in result.fetchall())
+    else:
+        result = conn.execute(text(
+            f"SELECT column_name FROM information_schema.columns "
+            f"WHERE table_name='{table}' AND column_name='{column}'"
+        ))
+        return result.fetchone() is not None
 
-# Migración: Eliminar columnas budget de items (ahora es personal por usuario)
-try:
-    with engine.connect() as conn:
-        # Verificar si la columna budget existe
-        result = conn.execute(text("""
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_name='items' AND column_name='budget'
-        """))
-
-        if result.fetchone():
-            print("🔄 Migrando: Eliminando columnas 'budget' de items...")
-            conn.execute(text("ALTER TABLE items DROP COLUMN budget"))
-            conn.execute(text("ALTER TABLE items DROP COLUMN budget_currency"))
-            conn.commit()
-            print("✅ Migración completada!")
-except Exception as e:
-    print(f"⚠️  Migración: {e}")
-
-# Migración: Agregar ON DELETE CASCADE al FK de user_item_budgets
-try:
-    with engine.connect() as conn:
-        # Verificar si la tabla existe
-        result = conn.execute(text("""
-            SELECT constraint_name
-            FROM information_schema.table_constraints
-            WHERE table_name='user_item_budgets'
-            AND constraint_type='FOREIGN KEY'
-            AND constraint_name LIKE '%item_id%'
-        """))
-        constraint = result.fetchone()
-        if constraint:
-            constraint_name = constraint[0]
-            # Verificar si ya tiene CASCADE
-            cascade_check = conn.execute(text(f"""
-                SELECT delete_rule
-                FROM information_schema.referential_constraints
-                WHERE constraint_name='{constraint_name}'
-            """))
-            rule = cascade_check.fetchone()
-            if rule and rule[0] != 'CASCADE':
-                print("🔄 Migrando: Agregando ON DELETE CASCADE a user_item_budgets...")
-                conn.execute(text(f"ALTER TABLE user_item_budgets DROP CONSTRAINT {constraint_name}"))
-                conn.execute(text("""
-                    ALTER TABLE user_item_budgets
-                    ADD CONSTRAINT user_item_budgets_item_id_fkey
-                    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
-                """))
+# Migraciones destructivas (DROP COLUMN) deshabilitadas por defecto para proteger datos.
+if ALLOW_DESTRUCTIVE_MIGRATIONS:
+    # Migración: Eliminar columna emoji de expense_templates si existe
+    try:
+        with engine.connect() as conn:
+            if column_exists(conn, 'expense_templates', 'emoji'):
+                print("Migrando: Eliminando columna 'emoji' de expense_templates...")
+                conn.execute(text("ALTER TABLE expense_templates DROP COLUMN emoji"))
                 conn.commit()
-                print("✅ Migración completada!")
+    except Exception as e:
+        print(f"Migracion emoji: {e}")
+else:
+    print("Migraciones destructivas deshabilitadas (ALLOW_DESTRUCTIVE_MIGRATIONS=false).")
+
+if ALLOW_DESTRUCTIVE_MIGRATIONS:
+    # Migración: Eliminar columnas budget de items (ahora es personal por usuario)
+    try:
+        with engine.connect() as conn:
+            if column_exists(conn, 'items', 'budget'):
+                print("Migrando: Eliminando columnas 'budget' de items...")
+                conn.execute(text("ALTER TABLE items DROP COLUMN budget"))
+                conn.execute(text("ALTER TABLE items DROP COLUMN budget_currency"))
+                conn.commit()
+    except Exception as e:
+        print(f"Migracion budget: {e}")
+
+# Migración: Agregar ON DELETE CASCADE al FK de user_item_budgets (solo PostgreSQL)
+if not IS_SQLITE:
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT constraint_name
+                FROM information_schema.table_constraints
+                WHERE table_name='user_item_budgets'
+                AND constraint_type='FOREIGN KEY'
+                AND constraint_name LIKE '%item_id%'
+            """))
+            constraint = result.fetchone()
+            if constraint:
+                constraint_name = constraint[0]
+                cascade_check = conn.execute(text(f"""
+                    SELECT delete_rule
+                    FROM information_schema.referential_constraints
+                    WHERE constraint_name='{constraint_name}'
+                """))
+                rule = cascade_check.fetchone()
+                if rule and rule[0] != 'CASCADE':
+                    conn.execute(text(f"ALTER TABLE user_item_budgets DROP CONSTRAINT {constraint_name}"))
+                    conn.execute(text("""
+                        ALTER TABLE user_item_budgets
+                        ADD CONSTRAINT user_item_budgets_item_id_fkey
+                        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+                    """))
+                    conn.commit()
+    except Exception as e:
+        print(f"Migracion cascade: {e}")
+
+# Migración: Agregar columnas de cuotas y saldado a expenses
+try:
+    with engine.connect() as conn:
+        new_expense_cols = [
+            ("is_installment",       "BOOLEAN DEFAULT FALSE"),
+            ("installment_number",   "INTEGER"),
+            ("installment_total",    "INTEGER"),
+            ("installment_group_id", "VARCHAR"),
+            ("is_settled",           "BOOLEAN DEFAULT FALSE"),
+        ]
+        for col_name, col_def in new_expense_cols:
+            if not column_exists(conn, 'expenses', col_name):
+                print(f"Migrando: Agregando columna '{col_name}' a expenses...")
+                conn.execute(text(f"ALTER TABLE expenses ADD COLUMN {col_name} {col_def}"))
+        conn.commit()
 except Exception as e:
-    print(f"⚠️  Migración cascade: {e}")
+    print(f"Migracion expenses: {e}")
 
 app = FastAPI(title="App Gastos API")
 
@@ -521,7 +541,12 @@ def get_expenses(
     if item.owner_id != current_user.id and current_user not in item.participants:
         raise HTTPException(status_code=403, detail="Not authorized to access this item")
 
-    expenses = db.query(Expense).filter(Expense.item_id == item_id).all()
+    expenses = (
+        db.query(Expense)
+        .filter(Expense.item_id == item_id)
+        .order_by(Expense.date.desc(), Expense.created_at.desc())
+        .all()
+    )
     return expenses
 
 @app.post("/api/items/{item_id}/expenses", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
@@ -572,11 +597,72 @@ def create_expense(
         split_type=expense.split_type,
         assigned_to=expense.assigned_to,
         selected_participants=selected_participants_str,
-        date=expense_date
+        date=expense_date,
+        is_installment=expense.is_installment,
+        installment_number=expense.installment_number,
+        installment_total=expense.installment_total,
+        installment_group_id=expense.installment_group_id,
+        is_settled=expense.is_settled,
     )
     db.add(new_expense)
     db.commit()
     db.refresh(new_expense)
+
+    # Lógica de cuotas: auto-crear siguiente cuota en item destino
+    if (
+        expense.is_installment
+        and expense.installment_number is not None
+        and expense.installment_total is not None
+        and expense.installment_number < expense.installment_total
+    ):
+        next_num = expense.installment_number + 1
+
+        # Resolver item destino para siguiente cuota
+        if expense.next_item_id:
+            target_item = db.query(Item).filter(Item.id == expense.next_item_id).first()
+            if not target_item:
+                raise HTTPException(status_code=404, detail="Item destino no encontrado")
+            if target_item.owner_id != current_user.id and current_user not in target_item.participants:
+                raise HTTPException(status_code=403, detail="Sin acceso al item destino")
+        else:
+            # Crear nuevo item duplicando config del actual
+            target_item = Item(
+                name=f"{item.name} - Cuota {next_num}",
+                item_type=item.item_type,
+                owner_id=current_user.id
+            )
+            db.add(target_item)
+            db.flush()  # obtener ID sin commit completo
+            for p in item.participants:
+                if p.id != current_user.id:
+                    target_item.participants.append(p)
+
+        # Asignar group_id (el id del primer gasto sirve como ancla de la cadena)
+        group_id = new_expense.installment_group_id or new_expense.id
+        if not new_expense.installment_group_id:
+            new_expense.installment_group_id = group_id
+
+        # Crear siguiente cuota en el item destino
+        next_expense = Expense(
+            item_id=target_item.id,
+            amount=new_expense.amount,
+            description=new_expense.description,
+            payment_method=new_expense.payment_method,
+            currency=new_expense.currency,
+            paid_by=new_expense.paid_by,
+            split_type=new_expense.split_type,
+            assigned_to=new_expense.assigned_to,
+            selected_participants=new_expense.selected_participants,
+            date=new_expense.date,
+            is_installment=True,
+            installment_number=next_num,
+            installment_total=new_expense.installment_total,
+            installment_group_id=group_id,
+        )
+        db.add(next_expense)
+        db.commit()
+        db.refresh(new_expense)
+
     return new_expense
 
 @app.put("/api/items/{item_id}/expenses/{expense_id}", response_model=ExpenseResponse)
@@ -630,7 +716,40 @@ def update_expense(
                 expense.date = dt.strptime(expense_update.date, '%Y-%m-%dT%H:%M')
             except:
                 expense.date = dt.now()
+    if expense_update.is_installment is not None:
+        expense.is_installment = expense_update.is_installment
+    if expense_update.installment_number is not None:
+        expense.installment_number = expense_update.installment_number
+    if expense_update.installment_total is not None:
+        expense.installment_total = expense_update.installment_total
+    if expense_update.installment_group_id is not None:
+        expense.installment_group_id = expense_update.installment_group_id
+    if expense_update.is_settled is not None:
+        expense.is_settled = expense_update.is_settled
 
+    db.commit()
+    db.refresh(expense)
+    return expense
+
+@app.patch("/api/items/{item_id}/expenses/{expense_id}/settled", response_model=ExpenseResponse)
+def toggle_expense_settled(
+    item_id: str,
+    expense_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.owner_id != current_user.id and current_user not in item.participants:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    expense = db.query(Expense).filter(
+        Expense.id == expense_id,
+        Expense.item_id == item_id
+    ).first()
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    expense.is_settled = not expense.is_settled
     db.commit()
     db.refresh(expense)
     return expense

@@ -69,6 +69,11 @@ class Expense(Base):
     selected_participants = Column(String, nullable=True)  # Si es "selected", IDs separados por comas
     date = Column(DateTime, default=datetime.datetime.utcnow)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    is_installment = Column(Boolean, default=False)
+    installment_number = Column(Integer, nullable=True)
+    installment_total = Column(Integer, nullable=True)
+    installment_group_id = Column(String, nullable=True)
+    is_settled = Column(Boolean, default=False)
 
     # Relaciones
     item = relationship("Item", back_populates="expenses")

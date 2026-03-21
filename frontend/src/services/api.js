@@ -123,6 +123,10 @@ export const deleteExpense = (itemId, expenseId) => {
   return api.delete(`/items/${itemId}/expenses/${expenseId}`);
 };
 
+export const toggleExpenseSettled = (itemId, expenseId) => {
+  return api.patch(`/items/${itemId}/expenses/${expenseId}/settled`);
+};
+
 // Expense Templates
 export const getExpenseTemplates = () => {
   return api.get('/expense-templates');
