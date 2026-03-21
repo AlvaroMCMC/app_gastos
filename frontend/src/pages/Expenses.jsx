@@ -120,6 +120,23 @@ function Expenses() {
     next_item_id: ''
   });
 
+  const getSortableTimestamp = (expense) => {
+    const primary = new Date(expense?.date || '').getTime();
+    const secondary = new Date(expense?.created_at || expense?.createdAt || '').getTime();
+    const dateTs = Number.isFinite(primary) ? primary : 0;
+    const createdTs = Number.isFinite(secondary) ? secondary : 0;
+    return { dateTs, createdTs };
+  };
+
+  const sortExpensesNewestFirst = (list) => {
+    return [...list].sort((a, b) => {
+      const aTs = getSortableTimestamp(a);
+      const bTs = getSortableTimestamp(b);
+      if (bTs.dateTs !== aTs.dateTs) return bTs.dateTs - aTs.dateTs;
+      return bTs.createdTs - aTs.createdTs;
+    });
+  };
+
   useEffect(() => {
     fetchItemAndExpenses();
     fetchUsersAndCurrentUser();
@@ -138,7 +155,7 @@ function Expenses() {
   const fetchPendingExpenses = async () => {
     try {
       const pending = await getPendingExpensesByItem(itemId);
-      setPendingExpenses(pending);
+      setPendingExpenses(sortExpensesNewestFirst(pending));
     } catch (error) {
       console.error('Error fetching pending expenses:', error);
     }
@@ -160,11 +177,7 @@ function Expenses() {
         getItems()
       ]);
       setItem(itemResponse.data);
-      const sorted = [...expensesResponse.data].sort((a, b) => {
-        const diff = new Date(b.date) - new Date(a.date);
-        return diff !== 0 ? diff : new Date(b.created_at) - new Date(a.created_at);
-      });
-      setExpenses(sorted);
+      setExpenses(sortExpensesNewestFirst(expensesResponse.data));
       setUserBudget(budgetResponse.data);
       setExpenseTemplates(templatesResponse.data);
       setUserItems(itemsResponse.data);
@@ -376,7 +389,7 @@ function Expenses() {
   const handleToggleSettled = async (expenseId) => {
     try {
       const res = await toggleExpenseSettled(itemId, expenseId);
-      setExpenses(prev => prev.map(e => e.id === expenseId ? res.data : e));
+      setExpenses(prev => sortExpensesNewestFirst(prev.map(e => e.id === expenseId ? res.data : e)));
     } catch (error) {
       console.error('Error toggling settled:', error);
       alert('Error al cambiar estado del gasto');
