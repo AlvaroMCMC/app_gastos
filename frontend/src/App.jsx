@@ -5,6 +5,7 @@ import { OfflineProvider } from './context/OfflineContext';
 import Login from './pages/Login';
 import Items from './pages/Items';
 import Expenses from './pages/Expenses';
+import Summary from './pages/Summary';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -51,6 +52,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Expenses />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/items/:itemId/summary"
+        element={
+          <ProtectedRoute>
+            <Summary />
           </ProtectedRoute>
         }
       />

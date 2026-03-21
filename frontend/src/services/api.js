@@ -127,6 +127,15 @@ export const toggleExpenseSettled = (itemId, expenseId) => {
   return api.patch(`/items/${itemId}/expenses/${expenseId}/settled`);
 };
 
+// Item Summary (AI)
+export const getItemSummary = (itemId) => {
+  return api.get(`/items/${itemId}/summary`);
+};
+
+export const generateItemSummary = (itemId) => {
+  return api.post(`/items/${itemId}/summary/generate`);
+};
+
 // Expense Templates
 export const getExpenseTemplates = () => {
   return api.get('/expense-templates');

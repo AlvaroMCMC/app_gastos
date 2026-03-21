@@ -2,19 +2,23 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, text
-from datetime import timedelta
-from typing import List
+from datetime import timedelta, datetime
+from typing import List, Dict
 import os
+import json
+import urllib.request
+import urllib.error
 
 from database import engine, get_db, Base, DATABASE_URL
-from models import User, Item, Expense, PendingInvitation, ExpenseTemplate, UserItemBudget
+from models import User, Item, Expense, PendingInvitation, ExpenseTemplate, UserItemBudget, ItemSummary
 from schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     ItemCreate, ItemUpdate, ItemResponse,
     ExpenseCreate, ExpenseUpdate, ExpenseResponse,
     ItemParticipantAdd, ItemParticipantResponse,
     ExpenseTemplateCreate, ExpenseTemplateUpdate, ExpenseTemplateResponse,
-    UserItemBudgetUpdate, UserItemBudgetResponse
+    UserItemBudgetUpdate, UserItemBudgetResponse,
+    ItemSummaryResponse
 )
 from auth import (
     get_password_hash, verify_password, create_access_token,
@@ -26,6 +30,21 @@ Base.metadata.create_all(bind=engine)
 
 IS_SQLITE = DATABASE_URL.startswith("sqlite")
 ALLOW_DESTRUCTIVE_MIGRATIONS = os.getenv("ALLOW_DESTRUCTIVE_MIGRATIONS", "false").lower() == "true"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+SUMMARY_CATEGORIES = [
+    "alimentacion",
+    "transporte",
+    "hogar",
+    "salud",
+    "entretenimiento",
+    "ropa",
+    "servicios",
+    "educacion",
+    "viajes",
+    "otros",
+]
 
 def column_exists(conn, table, column):
     """Verifica si una columna existe — compatible con SQLite y PostgreSQL."""
@@ -105,6 +124,10 @@ try:
             ("installment_total",    "INTEGER"),
             ("installment_group_id", "VARCHAR"),
             ("is_settled",           "BOOLEAN DEFAULT FALSE"),
+            ("ai_category",          "VARCHAR"),
+            ("ai_confidence",        "FLOAT"),
+            ("ai_model",             "VARCHAR"),
+            ("ai_classified_at",     "TIMESTAMP"),
         ]
         for col_name, col_def in new_expense_cols:
             if not column_exists(conn, 'expenses', col_name):
@@ -113,6 +136,117 @@ try:
         conn.commit()
 except Exception as e:
     print(f"Migracion expenses: {e}")
+
+def validate_category(category: str) -> str:
+    normalized = (category or "").strip().lower()
+    return normalized if normalized in SUMMARY_CATEGORIES else "otros"
+
+def ensure_item_access(item_id: str, current_user: User, db: Session) -> Item:
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.owner_id != current_user.id and current_user not in item.participants:
+        raise HTTPException(status_code=403, detail="Not authorized to access this item")
+    return item
+
+def build_summary_payload(expenses: List[Expense]) -> Dict[str, List[Dict[str, float]]]:
+    grouped: Dict[str, Dict[str, Dict[str, float]]] = {}
+    for expense in expenses:
+        currency = expense.currency or "soles"
+        category = validate_category(expense.ai_category)
+        grouped.setdefault(currency, {})
+        grouped[currency].setdefault(category, {"total_amount": 0.0, "expense_count": 0})
+        grouped[currency][category]["total_amount"] += float(expense.amount)
+        grouped[currency][category]["expense_count"] += 1
+
+    result: Dict[str, List[Dict[str, float]]] = {}
+    for currency, stats in grouped.items():
+        result[currency] = [
+            {
+                "category": category,
+                "total_amount": round(values["total_amount"], 2),
+                "expense_count": int(values["expense_count"])
+            }
+            for category, values in sorted(
+                stats.items(),
+                key=lambda item: item[1]["total_amount"],
+                reverse=True
+            )
+        ]
+    return result
+
+def classify_expenses_with_openai(expenses: List[Expense]) -> Dict[str, Dict[str, float]]:
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not configured")
+
+    expenses_for_model = [
+        {
+            "id": expense.id,
+            "description": expense.description,
+            "amount": expense.amount,
+            "currency": expense.currency,
+            "payment_method": expense.payment_method,
+        }
+        for expense in expenses
+    ]
+
+    prompt = (
+        "Clasifica cada gasto en una de estas categorias exactas: "
+        + ", ".join(SUMMARY_CATEGORIES)
+        + ". Responde SOLO JSON con este formato: "
+        + '{"classifications":[{"id":"<expense_id>","category":"<categoria>","confidence":0.0}]}'
+        + ". Confidence entre 0 y 1."
+        + f"\nGastos:\n{json.dumps(expenses_for_model, ensure_ascii=False)}"
+    )
+
+    body = {
+        "model": OPENAI_MODEL,
+        "messages": [
+            {"role": "system", "content": "Eres un clasificador de gastos y devuelves JSON válido únicamente."},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0
+    }
+
+    request = urllib.request.Request(
+        "https://api.openai.com/v1/chat/completions",
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=45) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+            content = payload["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        error_payload = e.read().decode("utf-8", errors="ignore")
+        raise HTTPException(status_code=502, detail=f"OpenAI HTTP error: {error_payload}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"OpenAI request failed: {str(e)}")
+
+    try:
+        parsed = json.loads(content)
+        classifications = parsed.get("classifications", [])
+    except Exception:
+        raise HTTPException(status_code=502, detail="Invalid JSON returned by AI model")
+
+    mapping: Dict[str, Dict[str, float]] = {}
+    for item in classifications:
+        expense_id = item.get("id")
+        if not expense_id:
+            continue
+        category = validate_category(item.get("category"))
+        confidence = item.get("confidence", 0.0)
+        try:
+            confidence = max(0.0, min(1.0, float(confidence)))
+        except Exception:
+            confidence = 0.0
+        mapping[expense_id] = {"category": category, "confidence": confidence}
+    return mapping
 
 app = FastAPI(title="App Gastos API")
 
@@ -780,6 +914,86 @@ def delete_expense(
     db.delete(expense)
     db.commit()
     return None
+
+# ============= ITEM SUMMARY (AI) ENDPOINTS =============
+
+@app.get("/api/items/{item_id}/summary", response_model=ItemSummaryResponse)
+def get_item_summary(
+    item_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    ensure_item_access(item_id, current_user, db)
+    summary = db.query(ItemSummary).filter(ItemSummary.item_id == item_id).first()
+    if not summary:
+        raise HTTPException(status_code=404, detail="Summary not generated yet")
+
+    try:
+        categories = json.loads(summary.categories_json)
+    except Exception:
+        categories = {}
+
+    return {
+        "item_id": item_id,
+        "generated_at": summary.generated_at,
+        "ai_model": summary.ai_model,
+        "expenses_processed": summary.expenses_processed,
+        "categories_by_currency": categories
+    }
+
+@app.post("/api/items/{item_id}/summary/generate", response_model=ItemSummaryResponse)
+def generate_item_summary(
+    item_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    ensure_item_access(item_id, current_user, db)
+    expenses = (
+        db.query(Expense)
+        .filter(Expense.item_id == item_id)
+        .order_by(Expense.date.desc(), Expense.created_at.desc())
+        .all()
+    )
+    if not expenses:
+        raise HTTPException(status_code=400, detail="No expenses found for this item")
+
+    classifications = classify_expenses_with_openai(expenses)
+    now = datetime.utcnow()
+
+    for expense in expenses:
+        classification = classifications.get(expense.id, {"category": "otros", "confidence": 0.0})
+        expense.ai_category = classification["category"]
+        expense.ai_confidence = classification["confidence"]
+        expense.ai_model = OPENAI_MODEL
+        expense.ai_classified_at = now
+
+    categories_by_currency = build_summary_payload(expenses)
+    categories_json = json.dumps(categories_by_currency, ensure_ascii=False)
+
+    summary = db.query(ItemSummary).filter(ItemSummary.item_id == item_id).first()
+    if not summary:
+        summary = ItemSummary(
+            item_id=item_id,
+            generated_by=current_user.id
+        )
+        db.add(summary)
+
+    summary.generated_by = current_user.id
+    summary.ai_model = OPENAI_MODEL
+    summary.categories_json = categories_json
+    summary.expenses_processed = len(expenses)
+    summary.generated_at = now
+    summary.updated_at = now
+
+    db.commit()
+
+    return {
+        "item_id": item_id,
+        "generated_at": summary.generated_at,
+        "ai_model": summary.ai_model,
+        "expenses_processed": summary.expenses_processed,
+        "categories_by_currency": categories_by_currency
+    }
 
 # ============================================
 # EXPENSE TEMPLATES

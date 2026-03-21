@@ -74,6 +74,10 @@ class Expense(Base):
     installment_total = Column(Integer, nullable=True)
     installment_group_id = Column(String, nullable=True)
     is_settled = Column(Boolean, default=False)
+    ai_category = Column(String, nullable=True)
+    ai_confidence = Column(Float, nullable=True)
+    ai_model = Column(String, nullable=True)
+    ai_classified_at = Column(DateTime, nullable=True)
 
     # Relaciones
     item = relationship("Item", back_populates="expenses")
@@ -104,3 +108,18 @@ class UserItemBudget(Base):
     # Relaciones
     user = relationship("User")
     item = relationship("Item")
+
+class ItemSummary(Base):
+    __tablename__ = "item_summaries"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    item_id = Column(String, ForeignKey("items.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    generated_by = Column(String, ForeignKey("users.id"), nullable=False)
+    ai_model = Column(String, nullable=True)
+    categories_json = Column(String, nullable=False, default="{}")
+    expenses_processed = Column(Integer, nullable=False, default=0)
+    generated_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+
+    item = relationship("Item")
+    user = relationship("User")

@@ -145,6 +145,12 @@ function Items() {
                 Ver Gastos
               </button>
               <button
+                onClick={() => navigate(`/items/${item.id}/summary`)}
+                className="btn-secondary"
+              >
+                Resumen IA
+              </button>
+              <button
                 onClick={() => handleDeleteItem(item.id)}
                 className="btn-danger"
               >

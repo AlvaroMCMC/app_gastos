@@ -950,9 +950,14 @@ function Expenses() {
   return (
     <div className="expenses-container">
       <OfflineIndicator />
-      <button onClick={() => navigate('/items')} className="btn-back">
-        ← Volver
-      </button>
+      <div className="expenses-top-nav">
+        <button onClick={() => navigate('/items')} className="btn-back">
+          ← Volver
+        </button>
+        <button onClick={() => navigate(`/items/${itemId}/summary`)} className="btn-summary-link">
+          Resumen IA
+        </button>
+      </div>
       <div className="header">
         <div className="item-info">
           <h1>{item.name}</h1>

@@ -28,6 +28,27 @@
   z-index: 10;
 }
 
+.expenses-top-nav {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.btn-summary-link {
+  background: #1e3a8a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-summary-link:hover {
+  background: #1d4ed8;
+}
+
 .btn-back:hover {
   background-color: #5568d3;
   transform: translateY(-1px);

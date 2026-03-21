@@ -46,6 +46,7 @@ Aplicación de control de gastos personal y compartido por "items" (ej. mes, via
 - Offline parcial en frontend: crear gastos offline y sincronizar después.
 - Estado "saldado" por gasto.
 - Cuotas: campos de cuota y creación automática de siguiente cuota en item destino o item nuevo.
+- Resumen por item con IA: categorización de gastos, agregado por moneda y visualización en gráficos de barras y pie.
 
 ## Convención de actualización (importante)
 Actualizar este archivo **solo cuando haya cambios importantes**:
@@ -60,6 +61,7 @@ Actualizar este archivo **solo cuando haya cambios importantes**:
 - 2026-03-21: Se formaliza este archivo como fuente única de verdad y se añade snapshot funcional.
 - 2026-03-21: Migraciones destructivas (`DROP COLUMN`) quedan deshabilitadas por defecto. Solo se ejecutan con `ALLOW_DESTRUCTIVE_MIGRATIONS=true`.
 - 2026-03-21: Corregido y desplegado el orden automático de gastos por item (más nuevo a más antiguo), validado en producción.
+- 2026-03-21: Se agrega vista "Resumen IA" por item (backend+frontend) con generación manual y persistencia de snapshot.
 
 ## Checklist rápido para IA
 1. Leer este archivo completo.

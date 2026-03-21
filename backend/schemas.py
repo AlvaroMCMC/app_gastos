@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 # User Schemas
 class UserCreate(BaseModel):
@@ -156,3 +156,17 @@ class UserItemBudgetResponse(UserItemBudgetBase):
     class Config:
         from_attributes = True
 
+
+# Item Summary Schemas
+class ItemSummaryCategoryStat(BaseModel):
+    category: str
+    total_amount: float
+    expense_count: int
+
+
+class ItemSummaryResponse(BaseModel):
+    item_id: str
+    generated_at: datetime
+    ai_model: Optional[str] = None
+    expenses_processed: int
+    categories_by_currency: Dict[str, List[ItemSummaryCategoryStat]]
