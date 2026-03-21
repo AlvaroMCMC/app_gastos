@@ -19,7 +19,8 @@ import {
   updateExpenseTemplate,
   deleteExpenseTemplate,
   getItems,
-  toggleExpenseSettled
+  toggleExpenseSettled,
+  recategorizeExpense
 } from '../services/api';
 import { savePendingExpense, getPendingExpensesByItem } from '../utils/offlineDB';
 import { useOffline } from '../context/OfflineContext';
@@ -421,6 +422,23 @@ function Expenses() {
         alert('Error al eliminar el gasto');
       }
     }
+  };
+
+  const handleRecategorizeExpense = async (expenseId) => {
+    try {
+      const response = await recategorizeExpense(itemId, expenseId);
+      setExpenses(prev => sortExpensesNewestFirst(prev.map(e => e.id === expenseId ? response.data : e)));
+    } catch (error) {
+      console.error('Error recategorizing expense:', error);
+      const detail = error.response?.data?.detail || 'Error al recategorizar el gasto';
+      alert(detail);
+    }
+  };
+
+  const formatCategoryLabel = (category) => {
+    if (!category) return 'Sin categoría IA';
+    const text = category.replace(/_/g, ' ');
+    return text.charAt(0).toUpperCase() + text.slice(1);
   };
 
   const handleChange = (e) => {
@@ -1161,6 +1179,9 @@ function Expenses() {
                   <div className="expense-info">
                     <div className="expense-title-row">
                       <h3>{expense.description}</h3>
+                      <span className="expense-category-badge" title={`Modelo: ${expense.ai_model || 'N/A'}`}>
+                        {formatCategoryLabel(expense.ai_category)}
+                      </span>
                       {expense.is_installment && expense.installment_number && expense.installment_total && (
                         <span className="installment-badge">
                           Cuota {expense.installment_number}/{expense.installment_total}
@@ -1202,6 +1223,13 @@ function Expenses() {
                   </div>
                 </div>
                 <div className="expense-actions">
+                  <button
+                    onClick={() => handleRecategorizeExpense(expense.id)}
+                    className="btn-recategorize"
+                    title="Forzar recategorización IA de este gasto"
+                  >
+                    Recategorizar
+                  </button>
                   <button
                     onClick={() => handleToggleSettled(expense.id)}
                     className={`btn-settle ${expense.is_settled ? 'settled' : ''}`}

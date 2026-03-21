@@ -49,6 +49,30 @@
   background: #1d4ed8;
 }
 
+.expense-category-badge {
+  background: #dbeafe;
+  color: #1e3a8a;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-recategorize {
+  background: #e0e7ff;
+  color: #3730a3;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-recategorize:hover {
+  background: #c7d2fe;
+}
+
 .btn-back:hover {
   background-color: #5568d3;
   transform: translateY(-1px);

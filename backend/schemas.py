@@ -108,6 +108,10 @@ class ExpenseResponse(BaseModel):
     installment_total: Optional[int] = None
     installment_group_id: Optional[str] = None
     is_settled: bool = False
+    ai_category: Optional[str] = None
+    ai_confidence: Optional[float] = None
+    ai_model: Optional[str] = None
+    ai_classified_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

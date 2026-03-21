@@ -927,6 +927,46 @@ def toggle_expense_settled(
     db.refresh(expense)
     return expense
 
+@app.post("/api/items/{item_id}/expenses/{expense_id}/recategorize", response_model=ExpenseResponse)
+def recategorize_expense(
+    item_id: str,
+    expense_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    item = ensure_item_access(item_id, current_user, db)
+    expense = db.query(Expense).filter(
+        Expense.id == expense_id,
+        Expense.item_id == item.id
+    ).first()
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    now = datetime.utcnow()
+    classification = None
+
+    if OPENAI_API_KEY:
+        try:
+            classifications = classify_expenses_with_openai([expense])
+            classification = classifications.get(expense.id)
+        except Exception as e:
+            print(f"Recategorizacion IA fallida, fallback reglas: {str(e)}")
+
+    if classification:
+        expense.ai_category = classification["category"]
+        expense.ai_confidence = classification["confidence"]
+        expense.ai_model = OPENAI_MODEL
+        expense.ai_classified_at = now
+    else:
+        expense.ai_category = classify_expense_with_rules(expense.description)
+        expense.ai_confidence = 0.35
+        expense.ai_model = "rules-v1"
+        expense.ai_classified_at = now
+
+    db.commit()
+    db.refresh(expense)
+    return expense
+
 @app.delete("/api/items/{item_id}/expenses/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_expense(
     item_id: str,

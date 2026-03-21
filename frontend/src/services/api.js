@@ -127,6 +127,10 @@ export const toggleExpenseSettled = (itemId, expenseId) => {
   return api.patch(`/items/${itemId}/expenses/${expenseId}/settled`);
 };
 
+export const recategorizeExpense = (itemId, expenseId) => {
+  return api.post(`/items/${itemId}/expenses/${expenseId}/recategorize`);
+};
+
 // Item Summary (AI)
 export const getItemSummary = (itemId) => {
   return api.get(`/items/${itemId}/summary`);
