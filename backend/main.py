@@ -957,15 +957,17 @@ def generate_item_summary(
     if not expenses:
         raise HTTPException(status_code=400, detail="No expenses found for this item")
 
-    classifications = classify_expenses_with_openai(expenses)
     now = datetime.utcnow()
+    expenses_to_classify = [expense for expense in expenses if not expense.ai_category]
 
-    for expense in expenses:
-        classification = classifications.get(expense.id, {"category": "otros", "confidence": 0.0})
-        expense.ai_category = classification["category"]
-        expense.ai_confidence = classification["confidence"]
-        expense.ai_model = OPENAI_MODEL
-        expense.ai_classified_at = now
+    if expenses_to_classify:
+        classifications = classify_expenses_with_openai(expenses_to_classify)
+        for expense in expenses_to_classify:
+            classification = classifications.get(expense.id, {"category": "otros", "confidence": 0.0})
+            expense.ai_category = classification["category"]
+            expense.ai_confidence = classification["confidence"]
+            expense.ai_model = OPENAI_MODEL
+            expense.ai_classified_at = now
 
     categories_by_currency = build_summary_payload(expenses)
     categories_json = json.dumps(categories_by_currency, ensure_ascii=False)
