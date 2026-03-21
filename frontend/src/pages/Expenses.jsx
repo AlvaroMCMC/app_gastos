@@ -120,20 +120,33 @@ function Expenses() {
     next_item_id: ''
   });
 
+  const toIsoSortKey = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') {
+      const raw = value.trim();
+      const match = raw.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+      if (match) return match[0];
+      const ts = Date.parse(raw);
+      if (Number.isFinite(ts)) return new Date(ts).toISOString().slice(0, 19);
+      return '';
+    }
+    const ts = Date.parse(String(value));
+    if (Number.isFinite(ts)) return new Date(ts).toISOString().slice(0, 19);
+    return '';
+  };
+
   const getSortableTimestamp = (expense) => {
-    const primary = new Date(expense?.date || '').getTime();
-    const secondary = new Date(expense?.created_at || expense?.createdAt || '').getTime();
-    const dateTs = Number.isFinite(primary) ? primary : 0;
-    const createdTs = Number.isFinite(secondary) ? secondary : 0;
-    return { dateTs, createdTs };
+    const dateKey = toIsoSortKey(expense?.date);
+    const createdKey = toIsoSortKey(expense?.created_at || expense?.createdAt);
+    return { dateKey, createdKey };
   };
 
   const sortExpensesNewestFirst = (list) => {
     return [...list].sort((a, b) => {
       const aTs = getSortableTimestamp(a);
       const bTs = getSortableTimestamp(b);
-      if (bTs.dateTs !== aTs.dateTs) return bTs.dateTs - aTs.dateTs;
-      return bTs.createdTs - aTs.createdTs;
+      if (bTs.dateKey !== aTs.dateKey) return bTs.dateKey.localeCompare(aTs.dateKey);
+      return bTs.createdKey.localeCompare(aTs.createdKey);
     });
   };
 
