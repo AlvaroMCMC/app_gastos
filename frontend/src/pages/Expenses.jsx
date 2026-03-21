@@ -120,19 +120,21 @@ function Expenses() {
     next_item_id: ''
   });
 
+  const parseBackendDate = (value) => {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    const raw = String(value).trim();
+    if (!raw) return null;
+    const hasTimezone = /[zZ]|[+-]\d{2}:\d{2}$/.test(raw);
+    const normalized = hasTimezone ? raw : `${raw}Z`;
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
   const toIsoSortKey = (value) => {
     if (!value) return '';
-    if (typeof value === 'string') {
-      const raw = value.trim();
-      const match = raw.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
-      if (match) return match[0];
-      const ts = Date.parse(raw);
-      if (Number.isFinite(ts)) return new Date(ts).toISOString().slice(0, 19);
-      return '';
-    }
-    const ts = Date.parse(String(value));
-    if (Number.isFinite(ts)) return new Date(ts).toISOString().slice(0, 19);
-    return '';
+    const parsed = parseBackendDate(value);
+    return parsed ? parsed.toISOString().slice(0, 19) : '';
   };
 
   const getSortableTimestamp = (expense) => {
@@ -517,7 +519,8 @@ function Expenses() {
   const fromUTCToPeru = (utcDateString) => {
     // Input: "2024-02-15T18:45:00.000Z" (UTC)
     // Output: "2024-02-15T13:45" (Peru time)
-    const date = new Date(utcDateString);
+    const date = parseBackendDate(utcDateString);
+    if (!date) return '';
 
     // Get components in Peru timezone
     const formatter = new Intl.DateTimeFormat('en-CA', {
