@@ -46,6 +46,18 @@ SUMMARY_CATEGORIES = [
     "otros",
 ]
 
+RULE_CATEGORY_KEYWORDS = {
+    "alimentacion": ["comida", "restaurante", "almuerzo", "cena", "desayuno", "delivery", "supermercado", "mercado", "snack", "cafe"],
+    "transporte": ["uber", "taxi", "bus", "metropolitano", "pasaje", "gasolina", "peaje", "estacionamiento", "movilidad"],
+    "hogar": ["alquiler", "renta", "mantenimiento", "limpieza", "mueble", "electrodomestico", "hogar"],
+    "salud": ["farmacia", "medicina", "doctor", "clinica", "salud", "seguro", "dentista"],
+    "entretenimiento": ["cine", "netflix", "spotify", "juego", "fiesta", "bar", "entretenimiento", "salida"],
+    "ropa": ["ropa", "zapato", "zapatilla", "camisa", "pantalon", "polera", "vestido"],
+    "servicios": ["luz", "agua", "internet", "telefono", "celular", "servicio", "suscripcion"],
+    "educacion": ["curso", "universidad", "colegio", "libro", "educacion", "capacitacion"],
+    "viajes": ["hotel", "vuelo", "pasaje aereo", "viaje", "airbnb", "equipaje", "turismo"],
+}
+
 def column_exists(conn, table, column):
     """Verifica si una columna existe — compatible con SQLite y PostgreSQL."""
     if IS_SQLITE:
@@ -141,6 +153,15 @@ def validate_category(category: str) -> str:
     normalized = (category or "").strip().lower()
     return normalized if normalized in SUMMARY_CATEGORIES else "otros"
 
+def classify_expense_with_rules(description: str) -> str:
+    text_value = (description or "").strip().lower()
+    if not text_value:
+        return "otros"
+    for category, keywords in RULE_CATEGORY_KEYWORDS.items():
+        if any(keyword in text_value for keyword in keywords):
+            return category
+    return "otros"
+
 def ensure_item_access(item_id: str, current_user: User, db: Session) -> Item:
     item = db.query(Item).filter(Item.id == item_id).first()
     if not item:
@@ -177,7 +198,7 @@ def build_summary_payload(expenses: List[Expense]) -> Dict[str, List[Dict[str, f
 
 def classify_expenses_with_openai(expenses: List[Expense]) -> Dict[str, Dict[str, float]]:
     if not OPENAI_API_KEY:
-        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not configured")
+        raise RuntimeError("OPENAI_API_KEY is not configured")
 
     expenses_for_model = [
         {
@@ -224,15 +245,15 @@ def classify_expenses_with_openai(expenses: List[Expense]) -> Dict[str, Dict[str
             content = payload["choices"][0]["message"]["content"]
     except urllib.error.HTTPError as e:
         error_payload = e.read().decode("utf-8", errors="ignore")
-        raise HTTPException(status_code=502, detail=f"OpenAI HTTP error: {error_payload}")
+        raise RuntimeError(f"OpenAI HTTP error: {error_payload}")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"OpenAI request failed: {str(e)}")
+        raise RuntimeError(f"OpenAI request failed: {str(e)}")
 
     try:
         parsed = json.loads(content)
         classifications = parsed.get("classifications", [])
     except Exception:
-        raise HTTPException(status_code=502, detail="Invalid JSON returned by AI model")
+        raise RuntimeError("Invalid JSON returned by AI model")
 
     mapping: Dict[str, Dict[str, float]] = {}
     for item in classifications:
@@ -721,6 +742,9 @@ def create_expense(
     if expense.selected_participants:
         selected_participants_str = ','.join(expense.selected_participants)
 
+    now = datetime.utcnow()
+    auto_category = classify_expense_with_rules(expense.description)
+
     new_expense = Expense(
         item_id=item_id,
         amount=expense.amount,
@@ -737,6 +761,10 @@ def create_expense(
         installment_total=expense.installment_total,
         installment_group_id=expense.installment_group_id,
         is_settled=expense.is_settled,
+        ai_category=auto_category,
+        ai_confidence=0.35,
+        ai_model="rules-v1",
+        ai_classified_at=now,
     )
     db.add(new_expense)
     db.commit()
@@ -823,10 +851,13 @@ def update_expense(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
+    recategorize_with_rules = False
+
     if expense_update.amount is not None:
         expense.amount = expense_update.amount
     if expense_update.description is not None:
         expense.description = expense_update.description
+        recategorize_with_rules = True
     if expense_update.payment_method is not None:
         expense.payment_method = expense_update.payment_method
     if expense_update.currency is not None:
@@ -860,6 +891,14 @@ def update_expense(
         expense.installment_group_id = expense_update.installment_group_id
     if expense_update.is_settled is not None:
         expense.is_settled = expense_update.is_settled
+
+    if recategorize_with_rules and expense.description:
+        # Solo reaplicar reglas si la clasificación actual no viene de IA OpenAI.
+        if not expense.ai_model or not expense.ai_model.startswith("gpt-"):
+            expense.ai_category = classify_expense_with_rules(expense.description)
+            expense.ai_confidence = 0.35
+            expense.ai_model = "rules-v1"
+            expense.ai_classified_at = datetime.utcnow()
 
     db.commit()
     db.refresh(expense)
@@ -961,13 +1000,30 @@ def generate_item_summary(
     expenses_to_classify = [expense for expense in expenses if not expense.ai_category]
 
     if expenses_to_classify:
-        classifications = classify_expenses_with_openai(expenses_to_classify)
+        classifications = {}
+        openai_error = None
+
+        if OPENAI_API_KEY:
+            try:
+                classifications = classify_expenses_with_openai(expenses_to_classify)
+            except Exception as e:
+                openai_error = str(e)
+
         for expense in expenses_to_classify:
-            classification = classifications.get(expense.id, {"category": "otros", "confidence": 0.0})
-            expense.ai_category = classification["category"]
-            expense.ai_confidence = classification["confidence"]
-            expense.ai_model = OPENAI_MODEL
-            expense.ai_classified_at = now
+            classification = classifications.get(expense.id)
+            if classification:
+                expense.ai_category = classification["category"]
+                expense.ai_confidence = classification["confidence"]
+                expense.ai_model = OPENAI_MODEL
+                expense.ai_classified_at = now
+            else:
+                expense.ai_category = classify_expense_with_rules(expense.description)
+                expense.ai_confidence = 0.35
+                expense.ai_model = "rules-v1"
+                expense.ai_classified_at = now
+
+        if openai_error:
+            print(f"Resumen IA: fallback a reglas por error OpenAI: {openai_error}")
 
     categories_by_currency = build_summary_payload(expenses)
     categories_json = json.dumps(categories_by_currency, ensure_ascii=False)
