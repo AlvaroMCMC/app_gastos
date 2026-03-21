@@ -131,6 +131,14 @@ export const recategorizeExpense = (itemId, expenseId) => {
   return api.post(`/items/${itemId}/expenses/${expenseId}/recategorize`);
 };
 
+export const setExpenseCategory = (itemId, expenseId, category) => {
+  return api.patch(`/items/${itemId}/expenses/${expenseId}/category`, { category });
+};
+
+export const getSummaryCategories = () => {
+  return api.get('/summary-categories');
+};
+
 // Item Summary (AI)
 export const getItemSummary = (itemId) => {
   return api.get(`/items/${itemId}/summary`);

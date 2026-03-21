@@ -20,7 +20,9 @@ import {
   deleteExpenseTemplate,
   getItems,
   toggleExpenseSettled,
-  recategorizeExpense
+  recategorizeExpense,
+  setExpenseCategory,
+  getSummaryCategories
 } from '../services/api';
 import { savePendingExpense, getPendingExpensesByItem } from '../utils/offlineDB';
 import { useOffline } from '../context/OfflineContext';
@@ -100,6 +102,10 @@ function Expenses() {
   const [budgetCurrency, setBudgetCurrency] = useState('soles');
   const [expenseTemplates, setExpenseTemplates] = useState([]);
   const [showTemplateConfig, setShowTemplateConfig] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [selectedExpenseForCategory, setSelectedExpenseForCategory] = useState(null);
+  const [selectedManualCategory, setSelectedManualCategory] = useState('');
+  const [summaryCategories, setSummaryCategories] = useState([]);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [userItems, setUserItems] = useState([]);
 
@@ -157,6 +163,7 @@ function Expenses() {
     fetchItemAndExpenses();
     fetchUsersAndCurrentUser();
     fetchPendingExpenses();
+    fetchSummaryCategories();
   }, [itemId]);
 
   // Update clock every minute
@@ -174,6 +181,15 @@ function Expenses() {
       setPendingExpenses(sortExpensesNewestFirst(pending));
     } catch (error) {
       console.error('Error fetching pending expenses:', error);
+    }
+  };
+
+  const fetchSummaryCategories = async () => {
+    try {
+      const response = await getSummaryCategories();
+      setSummaryCategories(response.data || []);
+    } catch (error) {
+      console.error('Error fetching summary categories:', error);
     }
   };
 
@@ -432,6 +448,27 @@ function Expenses() {
       console.error('Error recategorizing expense:', error);
       const detail = error.response?.data?.detail || 'Error al recategorizar el gasto';
       alert(detail);
+    }
+  };
+
+  const openManualCategoryModal = (expense) => {
+    setSelectedExpenseForCategory(expense);
+    setSelectedManualCategory(expense.ai_category || '');
+    setShowCategoryModal(true);
+  };
+
+  const handleSaveManualCategory = async (e) => {
+    e.preventDefault();
+    if (!selectedExpenseForCategory || !selectedManualCategory) return;
+    try {
+      const response = await setExpenseCategory(itemId, selectedExpenseForCategory.id, selectedManualCategory);
+      setExpenses(prev => sortExpensesNewestFirst(prev.map(e => e.id === selectedExpenseForCategory.id ? response.data : e)));
+      setShowCategoryModal(false);
+      setSelectedExpenseForCategory(null);
+      setSelectedManualCategory('');
+    } catch (error) {
+      console.error('Error setting manual category:', error);
+      alert(error.response?.data?.detail || 'Error al guardar categoría manual');
     }
   };
 
@@ -1224,6 +1261,13 @@ function Expenses() {
                 </div>
                 <div className="expense-actions">
                   <button
+                    onClick={() => openManualCategoryModal(expense)}
+                    className="btn-manual-category"
+                    title="Elegir categoría manual"
+                  >
+                    Categoría
+                  </button>
+                  <button
                     onClick={() => handleRecategorizeExpense(expense.id)}
                     className="btn-recategorize"
                     title="Forzar recategorización IA de este gasto"
@@ -1676,6 +1720,43 @@ function Expenses() {
                 Cerrar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showCategoryModal && (
+        <div className="modal-overlay" onClick={() => setShowCategoryModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Categoría Manual</h2>
+            <form onSubmit={handleSaveManualCategory}>
+              <div className="form-group">
+                <label>Categoría</label>
+                <select
+                  value={selectedManualCategory}
+                  onChange={(e) => setSelectedManualCategory(e.target.value)}
+                  required
+                >
+                  <option value="">Seleccionar...</option>
+                  {summaryCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {formatCategoryLabel(category)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryModal(false)}
+                  className="btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary">
+                  Guardar Categoría
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

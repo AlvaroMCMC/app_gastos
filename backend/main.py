@@ -14,7 +14,7 @@ from models import User, Item, Expense, PendingInvitation, ExpenseTemplate, User
 from schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     ItemCreate, ItemUpdate, ItemResponse,
-    ExpenseCreate, ExpenseUpdate, ExpenseResponse,
+    ExpenseCreate, ExpenseUpdate, ExpenseResponse, ExpenseCategoryUpdate,
     ItemParticipantAdd, ItemParticipantResponse,
     ExpenseTemplateCreate, ExpenseTemplateUpdate, ExpenseTemplateResponse,
     UserItemBudgetUpdate, UserItemBudgetResponse,
@@ -205,6 +205,27 @@ def build_summary_payload(expenses: List[Expense]) -> Dict[str, List[Dict[str, f
             )
         ]
     return result
+
+def sync_summary_snapshot(item_id: str, current_user: User, expenses: List[Expense], db: Session) -> ItemSummary:
+    categories_by_currency = build_summary_payload(expenses)
+    categories_json = json.dumps(categories_by_currency, ensure_ascii=False)
+    now = datetime.utcnow()
+
+    summary = db.query(ItemSummary).filter(ItemSummary.item_id == item_id).first()
+    if not summary:
+        summary = ItemSummary(
+            item_id=item_id,
+            generated_by=current_user.id
+        )
+        db.add(summary)
+
+    summary.generated_by = current_user.id
+    summary.ai_model = OPENAI_MODEL if OPENAI_API_KEY else "rules-v1"
+    summary.categories_json = categories_json
+    summary.expenses_processed = len(expenses)
+    summary.generated_at = now
+    summary.updated_at = now
+    return summary
 
 def classify_expenses_with_openai(expenses: List[Expense]) -> Dict[str, Dict[str, float]]:
     if not OPENAI_API_KEY:
@@ -977,6 +998,41 @@ def recategorize_expense(
     db.refresh(expense)
     return expense
 
+@app.patch("/api/items/{item_id}/expenses/{expense_id}/category", response_model=ExpenseResponse)
+def set_expense_category(
+    item_id: str,
+    expense_id: str,
+    payload: ExpenseCategoryUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    item = ensure_item_access(item_id, current_user, db)
+    expense = db.query(Expense).filter(
+        Expense.id == expense_id,
+        Expense.item_id == item.id
+    ).first()
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    category = validate_category(payload.category)
+    if category != payload.category.strip().lower():
+        raise HTTPException(status_code=400, detail="Invalid category")
+
+    expense.ai_category = category
+    expense.ai_confidence = 1.0
+    expense.ai_model = "manual"
+    expense.ai_classified_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(expense)
+    return expense
+
+@app.get("/api/summary-categories", response_model=List[str])
+def get_summary_categories(
+    current_user: User = Depends(get_current_user)
+):
+    return SUMMARY_CATEGORIES
+
 @app.delete("/api/items/{item_id}/expenses/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_expense(
     item_id: str,
@@ -1013,21 +1069,31 @@ def get_item_summary(
     db: Session = Depends(get_db)
 ):
     ensure_item_access(item_id, current_user, db)
-    summary = db.query(ItemSummary).filter(ItemSummary.item_id == item_id).first()
-    if not summary:
+    expenses = (
+        db.query(Expense)
+        .filter(Expense.item_id == item_id)
+        .order_by(Expense.date.desc(), Expense.created_at.desc())
+        .all()
+    )
+    if not expenses:
         raise HTTPException(status_code=404, detail="Summary not generated yet")
 
-    try:
-        categories = json.loads(summary.categories_json)
-    except Exception:
-        categories = {}
+    now = datetime.utcnow()
+    for expense in expenses:
+        if not expense.ai_category:
+            expense.ai_category = classify_expense_with_rules(expense.description)
+            expense.ai_confidence = 0.35
+            expense.ai_model = "rules-v1"
+            expense.ai_classified_at = now
 
+    summary = sync_summary_snapshot(item_id, current_user, expenses, db)
+    db.commit()
     return {
         "item_id": item_id,
         "generated_at": summary.generated_at,
         "ai_model": summary.ai_model,
         "expenses_processed": summary.expenses_processed,
-        "categories_by_currency": categories
+        "categories_by_currency": json.loads(summary.categories_json)
     }
 
 @app.post("/api/items/{item_id}/summary/generate", response_model=ItemSummaryResponse)
@@ -1075,24 +1141,7 @@ def generate_item_summary(
         if openai_error:
             print(f"Resumen IA: fallback a reglas por error OpenAI: {openai_error}")
 
-    categories_by_currency = build_summary_payload(expenses)
-    categories_json = json.dumps(categories_by_currency, ensure_ascii=False)
-
-    summary = db.query(ItemSummary).filter(ItemSummary.item_id == item_id).first()
-    if not summary:
-        summary = ItemSummary(
-            item_id=item_id,
-            generated_by=current_user.id
-        )
-        db.add(summary)
-
-    summary.generated_by = current_user.id
-    summary.ai_model = OPENAI_MODEL
-    summary.categories_json = categories_json
-    summary.expenses_processed = len(expenses)
-    summary.generated_at = now
-    summary.updated_at = now
-
+    summary = sync_summary_snapshot(item_id, current_user, expenses, db)
     db.commit()
 
     return {
@@ -1100,7 +1149,7 @@ def generate_item_summary(
         "generated_at": summary.generated_at,
         "ai_model": summary.ai_model,
         "expenses_processed": summary.expenses_processed,
-        "categories_by_currency": categories_by_currency
+        "categories_by_currency": json.loads(summary.categories_json)
     }
 
 # ============================================

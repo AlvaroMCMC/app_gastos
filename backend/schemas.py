@@ -90,6 +90,9 @@ class ExpenseUpdate(BaseModel):
     installment_group_id: Optional[str] = None
     is_settled: Optional[bool] = None
 
+class ExpenseCategoryUpdate(BaseModel):
+    category: str
+
 class ExpenseResponse(BaseModel):
     id: str
     item_id: str
