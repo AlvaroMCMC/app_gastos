@@ -29,11 +29,12 @@ Aplicación de control de gastos personal y compartido por "items" (ej. mes, via
 - Items: `/api/items` + CRUD
 - Participantes: `/api/items/{item_id}/participants`
 - Presupuesto por usuario/item: `/api/items/{item_id}/budget`
-- Gastos: `/api/items/{item_id}/expenses` + toggle settled
+- Gastos: `/api/items/{item_id}/expenses` + toggle settled + recategorización IA/manual por gasto
+- Resumen IA: `/api/items/{item_id}/summary`, `/api/items/{item_id}/summary/generate`, `/api/summary-categories`
 - Plantillas: `/api/expense-templates` + reorder
 
 ## Estado actual del repo
-- Worktree con cambios sin commit en backend y frontend (feature de gastos/cuotas/settled en progreso).
+- Worktree con cambios locales no relacionados en `.claude/settings.local.json` y archivos de capturas.
 - Hay artefactos locales presentes (`backend/venv`, `frontend/node_modules`, `frontend/dist`).
 
 ## Funcionalidades actuales (código local)
@@ -47,6 +48,9 @@ Aplicación de control de gastos personal y compartido por "items" (ej. mes, via
 - Estado "saldado" por gasto.
 - Cuotas: campos de cuota y creación automática de siguiente cuota en item destino o item nuevo.
 - Resumen por item con IA: categorización de gastos, agregado por moneda y visualización en gráficos de barras y pie.
+- Ahorro de tokens: la IA solo categoriza gastos sin `ai_category`; los ya categorizados no se reclasifican automáticamente.
+- Recategorización manual por gasto con selector de categoría.
+- Resumen IA sincronizado al entrar: recalcula agregado desde categorías actuales de todos los gastos del item.
 
 ## Convención de actualización (importante)
 Actualizar este archivo **solo cuando haya cambios importantes**:
@@ -62,6 +66,8 @@ Actualizar este archivo **solo cuando haya cambios importantes**:
 - 2026-03-21: Migraciones destructivas (`DROP COLUMN`) quedan deshabilitadas por defecto. Solo se ejecutan con `ALLOW_DESTRUCTIVE_MIGRATIONS=true`.
 - 2026-03-21: Corregido y desplegado el orden automático de gastos por item (más nuevo a más antiguo), validado en producción.
 - 2026-03-21: Se agrega vista "Resumen IA" por item (backend+frontend) con generación manual y persistencia de snapshot.
+- 2026-03-21: Se agrega fallback por reglas para categorización y auto-categorización de nuevos gastos.
+- 2026-03-21: Se agrega recategorización manual por gasto y sincronización en vivo del Resumen IA.
 
 ## Checklist rápido para IA
 1. Leer este archivo completo.
