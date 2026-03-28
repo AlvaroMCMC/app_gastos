@@ -63,7 +63,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="/" element={<Navigate to="/items" />} />
+      <Route path="/" element={<Navigate to="/login" />} />
     </Routes>
   );
 }

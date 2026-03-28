@@ -1247,24 +1247,24 @@
 }
 
 .btn-settle {
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: #f0f0f0;
+  color: #555;
+  border: 1px solid #ccc;
   border-radius: 4px;
   padding: 4px 10px;
   cursor: pointer;
   font-size: 0.78rem;
-  transition: background 0.2s;
+  transition: background 0.2s, color 0.2s;
 }
 
 .btn-settle:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: #e0e0e0;
 }
 
 .btn-settle.settled {
-  background: rgba(40, 167, 69, 0.3);
-  color: #a8f0b8;
-  border-color: rgba(40, 167, 69, 0.5);
+  background: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
   font-weight: 600;
 }
 

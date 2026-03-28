@@ -517,7 +517,7 @@ function Expenses() {
   const calculateTotalsByCurrency = () => {
     const totals = {};
 
-    activeExpenses.forEach(expense => {
+    expenses.forEach(expense => {
       const currency = expense.currency || 'soles';
       if (!totals[currency]) {
         totals[currency] = 0;
@@ -1278,7 +1278,7 @@ function Expenses() {
                     onClick={() => handleToggleSettled(expense.id)}
                     className={`btn-settle ${expense.is_settled ? 'settled' : ''}`}
                   >
-                    {expense.is_settled ? '✓ Saldado' : 'Saldar'}
+                    {expense.is_settled ? '✓ Pagado' : 'Pagado'}
                   </button>
                   <button
                     onClick={() => handleOpenModal(expense)}
