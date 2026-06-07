@@ -36,6 +36,7 @@ services:
       - traefik-public
     labels:
       - traefik.enable=true
+      - traefik.docker.network=traefik-public
       # HTTPS
       - traefik.http.routers.gastos.rule=Host(`gastos.deep-data.store`)
       - traefik.http.routers.gastos.entrypoints=websecure
