@@ -16,6 +16,8 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
     restart: unless-stopped
+    networks:
+      - default
 
   # ============================================
   # FRONTEND - React + Nginx
@@ -26,8 +28,27 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL}
-    ports:
-      - "80:80"
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - default
+      - traefik-public
+    labels:
+      - traefik.enable=true
+      # HTTPS
+      - traefik.http.routers.gastos.rule=Host(`gastos.deep-data.store`)
+      - traefik.http.routers.gastos.entrypoints=websecure
+      - traefik.http.routers.gastos.tls.certresolver=le
+      - traefik.http.services.gastos.loadbalancer.server.port=80
+      # Redirect HTTP → HTTPS
+      - traefik.http.routers.gastos-http.rule=Host(`gastos.deep-data.store`)
+      - traefik.http.routers.gastos-http.entrypoints=web
+      - traefik.http.routers.gastos-http.middlewares=https-redirect
+      - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true
+
+networks:
+  default:
+  traefik-public:
+    external: true
