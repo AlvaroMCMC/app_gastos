@@ -19,7 +19,7 @@ def init_database():
             version = result.fetchone()[0]
             print(f"PostgreSQL version: {version}")
             
-        print("\nConexion exitosa a PostgreSQL en Easypanel!")
+        print("\nConexion exitosa a PostgreSQL en Supabase!")
         
     except Exception as e:
         print(f"Error al inicializar la base de datos: {e}")
