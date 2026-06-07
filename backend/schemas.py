@@ -148,8 +148,9 @@ class ExpenseTemplateResponse(ExpenseTemplateBase):
 
 # User Item Budget Schemas
 class UserItemBudgetBase(BaseModel):
-    budget: float = 0.0
-    currency: str = "soles"
+    budget_soles: float = 0.0
+    budget_dolares: float = 0.0
+    budget_reales: float = 0.0
 
 class UserItemBudgetUpdate(UserItemBudgetBase):
     pass

@@ -525,8 +525,6 @@ def get_user_budget(
         budget = UserItemBudget(
             user_id=current_user.id,
             item_id=item_id,
-            budget=0.0,
-            currency="soles"
         )
         db.add(budget)
         db.commit()
@@ -568,8 +566,9 @@ def update_user_budget(
         db.add(budget)
 
     # Actualizar campos
-    budget.budget = budget_update.budget
-    budget.currency = budget_update.currency
+    budget.budget_soles = budget_update.budget_soles
+    budget.budget_dolares = budget_update.budget_dolares
+    budget.budget_reales = budget_update.budget_reales
 
     db.commit()
     db.refresh(budget)

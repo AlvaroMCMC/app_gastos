@@ -98,8 +98,10 @@ function Expenses() {
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showSelectParticipantsModal, setShowSelectParticipantsModal] = useState(false);
   const [userBudget, setUserBudget] = useState(null);
-  const [budgetAmount, setBudgetAmount] = useState('');
-  const [budgetCurrency, setBudgetCurrency] = useState('soles');
+  const [budgetSoles, setBudgetSoles] = useState('');
+  const [budgetDolares, setBudgetDolares] = useState('');
+  const [budgetReales, setBudgetReales] = useState('');
+  const [activeFilter, setActiveFilter] = useState('todos');
   const [expenseTemplates, setExpenseTemplates] = useState([]);
   const [showTemplateConfig, setShowTemplateConfig] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -271,19 +273,20 @@ function Expenses() {
   };
 
   const handleOpenBudgetModal = () => {
-    setBudgetAmount(userBudget?.budget || '');
-    setBudgetCurrency(userBudget?.currency || 'soles');
+    setBudgetSoles(userBudget?.budget_soles || '');
+    setBudgetDolares(userBudget?.budget_dolares || '');
+    setBudgetReales(userBudget?.budget_reales || '');
     setShowBudgetModal(true);
   };
 
   const handleSaveBudget = async (e) => {
     e.preventDefault();
-
     try {
       const response = await updateUserBudget(
         itemId,
-        parseFloat(budgetAmount) || 0,
-        budgetCurrency
+        parseFloat(budgetSoles) || 0,
+        parseFloat(budgetDolares) || 0,
+        parseFloat(budgetReales) || 0,
       );
       setUserBudget(response.data);
       setShowBudgetModal(false);
@@ -294,13 +297,14 @@ function Expenses() {
   };
 
   const calculateRemaining = () => {
-    if (!userBudget) return 0;
-
-    const budgetCurr = userBudget.currency || 'soles';
+    if (!userBudget) return {};
     const totals = calculateTotalsByCurrency();
-    const totalSpent = totals[budgetCurr] || 0;
-
-    return (userBudget.budget || 0) - totalSpent;
+    const result = {};
+    for (const curr of ['soles', 'dolares', 'reales']) {
+      const b = userBudget[`budget_${curr}`] || 0;
+      if (b > 0) result[curr] = b - (totals[curr] || 0);
+    }
+    return result;
   };
 
   const handleOpenModal = (expense = null, quickDescription = null) => {
@@ -513,6 +517,9 @@ function Expenses() {
   };
 
   const activeExpenses = expenses.filter(e => !e.is_settled);
+  const filteredExpenses = activeFilter === 'cuotas'
+    ? expenses.filter(e => e.is_installment)
+    : expenses;
 
   const calculateTotalsByCurrency = () => {
     const totals = {};
@@ -1059,17 +1066,28 @@ function Expenses() {
               +
             </button>
           </div>
-          <p className="total-amount">
-            {getCurrencySymbol(userBudget?.currency || 'soles')}
-            {(userBudget?.budget || 0).toFixed(2)}
-          </p>
-          <div className="budget-remaining">
-            <span className="remaining-label">Queda:</span>
-            <span className={`remaining-amount ${calculateRemaining() < 0 ? 'negative' : ''}`}>
-              {getCurrencySymbol(userBudget?.currency || 'soles')}
-              {calculateRemaining().toFixed(2)}
-            </span>
-          </div>
+          {['soles', 'dolares', 'reales'].filter(c => (userBudget?.[`budget_${c}`] || 0) > 0).length === 0 ? (
+            <p className="budget-empty">Sin presupuesto</p>
+          ) : (
+            ['soles', 'dolares', 'reales']
+              .filter(c => (userBudget?.[`budget_${c}`] || 0) > 0)
+              .map(curr => {
+                const remaining = calculateRemaining()[curr];
+                return (
+                  <div key={curr} className="budget-row">
+                    <p className="total-amount">
+                      {getCurrencySymbol(curr)}{(userBudget[`budget_${curr}`]).toFixed(2)}
+                    </p>
+                    <div className="budget-remaining">
+                      <span className="remaining-label">Queda:</span>
+                      <span className={`remaining-amount ${remaining < 0 ? 'negative' : ''}`}>
+                        {getCurrencySymbol(curr)}{remaining.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+          )}
         </div>
 
         {item?.item_type === 'shared' && expenses.length > 0 && (
@@ -1175,6 +1193,21 @@ function Expenses() {
         )}
       </div>
 
+      <div className="filter-bar">
+        <button
+          className={`filter-btn ${activeFilter === 'todos' ? 'active' : ''}`}
+          onClick={() => setActiveFilter('todos')}
+        >
+          Todos
+        </button>
+        <button
+          className={`filter-btn ${activeFilter === 'cuotas' ? 'active' : ''}`}
+          onClick={() => setActiveFilter('cuotas')}
+        >
+          Cuotas
+        </button>
+      </div>
+
       {expenses.length === 0 && pendingExpenses.length === 0 ? (
         <div className="empty-state">
           <p>No hay gastos registrados</p>
@@ -1206,7 +1239,12 @@ function Expenses() {
           ))}
 
           {/* Gastos normales (sincronizados) */}
-          {expenses.map((expense) => {
+          {filteredExpenses.length === 0 && expenses.length > 0 && (
+            <div className="empty-filter-state">
+              <p>No hay cuotas en este item</p>
+            </div>
+          )}
+          {filteredExpenses.map((expense) => {
             const participantIds = getExpenseParticipantIds(expense);
             const initialsMap = item?.item_type === 'shared' ? generateUniqueInitials(participants) : {};
 
@@ -1608,32 +1646,41 @@ function Expenses() {
         <div className="modal-overlay" onClick={() => setShowBudgetModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2>Establecer Presupuesto</h2>
+            <p className="modal-description">Deja en 0 las monedas que no quieras presupuestar.</p>
             <form onSubmit={handleSaveBudget}>
               <div className="form-group">
-                <label>Monto del Presupuesto</label>
+                <label>Soles (S/)</label>
                 <input
                   type="number"
-                  value={budgetAmount}
-                  onChange={(e) => setBudgetAmount(e.target.value)}
+                  value={budgetSoles}
+                  onChange={(e) => setBudgetSoles(e.target.value)}
                   placeholder="0.00"
                   step="0.01"
                   min="0"
-                  required
                 />
               </div>
-
               <div className="form-group">
-                <label>Moneda</label>
-                <select
-                  value={budgetCurrency}
-                  onChange={(e) => setBudgetCurrency(e.target.value)}
-                >
-                  <option value="soles">Soles (S/)</option>
-                  <option value="dolares">Dólares ($)</option>
-                  <option value="reales">Reales (R$)</option>
-                </select>
+                <label>Dólares ($)</label>
+                <input
+                  type="number"
+                  value={budgetDolares}
+                  onChange={(e) => setBudgetDolares(e.target.value)}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                />
               </div>
-
+              <div className="form-group">
+                <label>Reales (R$)</label>
+                <input
+                  type="number"
+                  value={budgetReales}
+                  onChange={(e) => setBudgetReales(e.target.value)}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
               <div className="modal-actions">
                 <button
                   type="button"

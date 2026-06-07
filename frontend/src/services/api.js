@@ -102,8 +102,12 @@ export const getUserBudget = (itemId) => {
   return api.get(`/items/${itemId}/budget`);
 };
 
-export const updateUserBudget = (itemId, budget, currency) => {
-  return api.put(`/items/${itemId}/budget`, { budget, currency });
+export const updateUserBudget = (itemId, budgetSoles, budgetDolares, budgetReales) => {
+  return api.put(`/items/${itemId}/budget`, {
+    budget_soles: budgetSoles,
+    budget_dolares: budgetDolares,
+    budget_reales: budgetReales,
+  });
 };
 
 // Expenses

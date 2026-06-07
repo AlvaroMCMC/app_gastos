@@ -101,8 +101,9 @@ class UserItemBudget(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     item_id = Column(String, ForeignKey("items.id", ondelete="CASCADE"), nullable=False)
-    budget = Column(Float, nullable=False, default=0.0)
-    currency = Column(String, nullable=False, default="soles")
+    budget_soles = Column(Float, nullable=False, default=0.0)
+    budget_dolares = Column(Float, nullable=False, default=0.0)
+    budget_reales = Column(Float, nullable=False, default=0.0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relaciones
