@@ -145,6 +145,13 @@ function Items() {
                 Ver Gastos
               </button>
               <button
+                onClick={() => navigate(`/items/${item.id}/expenses?add=1`)}
+                className="btn-add-expense"
+                title="Agregar gasto"
+              >
+                + Gasto
+              </button>
+              <button
                 onClick={() => navigate(`/items/${item.id}/summary`)}
                 className="btn-secondary"
               >

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   getItem,
   getExpenses,
@@ -83,6 +83,8 @@ const TemplateItem = ({ template, onUpdate, onDelete }) => {
 function Expenses() {
   const { itemId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const autoOpenedRef = useRef(false);
 
   const [item, setItem] = useState(null);
   const [expenses, setExpenses] = useState([]);
@@ -200,6 +202,13 @@ function Expenses() {
       fetchParticipants();
     }
   }, [item?.item_type, itemId]);
+
+  useEffect(() => {
+    if (currentUser && searchParams.get('add') === '1' && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
+      handleOpenModal();
+    }
+  }, [currentUser]);
 
   const fetchItemAndExpenses = async () => {
     try {
@@ -1370,111 +1379,76 @@ function Expenses() {
 
               <div className="form-group">
                 <label>Método de Pago</label>
-                <select
-                  name="payment_method"
-                  value={formData.payment_method}
-                  onChange={handleChange}
-                >
-                  <option value="banco">Banco</option>
-                  <option value="efectivo">Efectivo</option>
-                </select>
+                <div className="toggle-btn-group">
+                  {[{ value: 'banco', label: 'Banco' }, { value: 'efectivo', label: 'Efectivo' }].map(opt => (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      className={`toggle-btn ${formData.payment_method === opt.value ? 'active' : ''}`}
+                      onClick={() => setFormData({ ...formData, payment_method: opt.value })}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="form-group">
                 <label>Moneda</label>
-                <select
-                  name="currency"
-                  value={formData.currency}
-                  onChange={handleChange}
-                >
-                  <option value="soles">Soles (S/)</option>
-                  <option value="dolares">Dólares ($)</option>
-                  <option value="reales">Reales (R$)</option>
-                </select>
+                <div className="toggle-btn-group">
+                  {[{ value: 'soles', label: 'S/ Soles' }, { value: 'dolares', label: '$ Dólares' }, { value: 'reales', label: 'R$ Reales' }].map(opt => (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      className={`toggle-btn ${formData.currency === opt.value ? 'active' : ''}`}
+                      onClick={() => setFormData({ ...formData, currency: opt.value })}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {item?.item_type === 'shared' && (
                 <>
                   <div className="form-group">
                     <label>¿Quién pagó?</label>
-                    <select
-                      name="paid_by"
-                      value={formData.paid_by}
-                      onChange={handleChange}
-                      required
-                    >
-                      <option value="">Seleccionar usuario</option>
-                      {users.map(user => (
-                        <option key={user.id} value={user.id}>
-                          {user.name || user.email} {user.id === currentUser?.id ? '(Tú)' : ''}
-                        </option>
+                    <div className="toggle-btn-group">
+                      {participants.filter(p => !p.is_pending).map(p => (
+                        <button
+                          type="button"
+                          key={p.id}
+                          className={`toggle-btn ${formData.paid_by === p.id ? 'active' : ''}`}
+                          onClick={() => setFormData({ ...formData, paid_by: p.id })}
+                        >
+                          {p.name || p.email.split('@')[0]}{p.id === currentUser?.id ? ' (Tú)' : ''}
+                        </button>
                       ))}
-                    </select>
+                    </div>
                   </div>
 
                   <div className="form-group">
                     <label>Tipo de división</label>
-                    <select
-                      name="split_type"
-                      value={formData.split_type}
-                      onChange={handleChange}
-                      required
-                    >
-                      <option value="divided">Dividir entre todos</option>
-                      <option value="assigned">Asignar a una persona</option>
-                      <option value="selected">Seleccionar participantes</option>
-                    </select>
-                  </div>
-
-                  {formData.split_type === 'assigned' && (
-                    <div className="form-group">
-                      <label>Asignar a</label>
-                      <select
-                        name="assigned_to"
-                        value={formData.assigned_to}
-                        onChange={handleChange}
-                        required
-                      >
-                        <option value="">Seleccionar usuario</option>
-                        {users.map(user => (
-                          <option key={user.id} value={user.id}>
-                            {user.name || user.email} {user.id === currentUser?.id ? '(Tú)' : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {formData.split_type === 'selected' && (
-                    <div className="form-group">
-                      <label>Participantes seleccionados</label>
+                    <div className="toggle-btn-group">
                       <button
                         type="button"
-                        onClick={() => setShowSelectParticipantsModal(true)}
-                        className="btn-select-participants"
+                        className={`toggle-btn ${formData.split_type === 'divided' ? 'active' : ''}`}
+                        onClick={() => setFormData({ ...formData, split_type: 'divided', assigned_to: '', selected_participants: [] })}
                       >
-                        {formData.selected_participants?.length > 0
-                          ? `${formData.selected_participants.length} participante(s) seleccionado(s)`
-                          : 'Seleccionar participantes...'}
+                        Dividir entre todos
                       </button>
-                      {formData.selected_participants?.length > 0 && (
-                        <div className="selected-participants-preview">
-                          {formData.selected_participants.map(participantId => {
-                            const participant = participants.find(p => p.id === participantId);
-                            return participant ? (
-                              <span key={participantId} className="selected-participant-tag">
-                                {participant.name || participant.email.split('@')[0]}
-                                {participant.id === currentUser?.id && ' (Tú)'}
-                              </span>
-                            ) : null;
-                          })}
-                        </div>
-                      )}
-                      {formData.selected_participants?.length === 0 && (
-                        <small className="validation-hint">Debes seleccionar al menos un participante</small>
-                      )}
+                      {participants.filter(p => !p.is_pending).map(p => (
+                        <button
+                          type="button"
+                          key={p.id}
+                          className={`toggle-btn ${formData.split_type === 'assigned' && formData.assigned_to === p.id ? 'active' : ''}`}
+                          onClick={() => setFormData({ ...formData, split_type: 'assigned', assigned_to: p.id, selected_participants: [] })}
+                        >
+                          {p.name || p.email.split('@')[0]}{p.id === currentUser?.id ? ' (Tú)' : ''}
+                        </button>
+                      ))}
                     </div>
-                  )}
+                  </div>
                 </>
               )}
 
