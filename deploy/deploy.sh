@@ -14,7 +14,7 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 echo "==> Pulling latest code..."
-git pull origin master
+git pull origin main
 
 echo "==> Building and starting containers..."
 docker compose --env-file "$ENV_FILE" up -d --build
