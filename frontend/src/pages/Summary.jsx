@@ -10,7 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { getItem, getItemSummary, generateItemSummary } from '../services/api';
+import { getItem, getItemSummary, generateItemSummary, getExpenses, getMe } from '../services/api';
 import '../styles/Summary.css';
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
@@ -38,10 +38,13 @@ function Summary() {
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
   const [summary, setSummary] = useState(null);
+  const [expenses, setExpenses] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [selectedCurrency, setSelectedCurrency] = useState('');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [hidePersonalExpenses, setHidePersonalExpenses] = useState(false);
 
   const fetchSummary = async () => {
     try {
@@ -67,8 +70,14 @@ function Summary() {
     const load = async () => {
       setLoading(true);
       try {
-        const itemResponse = await getItem(itemId);
+        const [itemResponse, expensesResponse, currentUserResponse] = await Promise.all([
+          getItem(itemId),
+          getExpenses(itemId),
+          getMe(),
+        ]);
         setItem(itemResponse.data);
+        setExpenses(expensesResponse.data);
+        setCurrentUser(currentUserResponse.data);
         await fetchSummary();
       } catch {
         alert('Error al cargar el resumen del item');
@@ -114,15 +123,35 @@ function Summary() {
     ],
   }), [currentStats, selectedCurrency]);
 
+  const pieStats = useMemo(() => {
+    if (!hidePersonalExpenses) return currentStats;
+
+    const totals = {};
+    expenses
+      .filter((expense) =>
+        expense.currency === selectedCurrency &&
+        !(expense.split_type === 'assigned' && expense.assigned_to === currentUser?.id)
+      )
+      .forEach((expense) => {
+        const category = expense.ai_category || 'otros';
+        if (!totals[category]) {
+          totals[category] = { category, total_amount: 0, expense_count: 0 };
+        }
+        totals[category].total_amount += expense.amount;
+        totals[category].expense_count += 1;
+      });
+    return Object.values(totals);
+  }, [hidePersonalExpenses, currentStats, expenses, selectedCurrency, currentUser]);
+
   const pieData = useMemo(() => ({
-    labels: currentStats.map((item) => item.category),
+    labels: pieStats.map((item) => item.category),
     datasets: [
       {
-        data: currentStats.map((item) => item.total_amount),
-        backgroundColor: currentStats.map((_, idx) => COLOR_PALETTE[idx % COLOR_PALETTE.length]),
+        data: pieStats.map((item) => item.total_amount),
+        backgroundColor: pieStats.map((_, idx) => COLOR_PALETTE[idx % COLOR_PALETTE.length]),
       },
     ],
-  }), [currentStats]);
+  }), [pieStats]);
 
   if (loading) return <div className="summary-loading">Cargando resumen...</div>;
 
@@ -180,14 +209,28 @@ function Summary() {
                 />
               </div>
               <div className="chart-card">
-                <h3>Distribución (Pie)</h3>
-                <Pie
-                  data={pieData}
-                  options={{
-                    responsive: true,
-                    plugins: { legend: { position: 'bottom' } },
-                  }}
-                />
+                <div className="chart-card-header">
+                  <h3>Distribución (Pie)</h3>
+                  {item?.item_type === 'shared' && (
+                    <button
+                      className={`btn-toggle-personal ${hidePersonalExpenses ? 'active' : ''}`}
+                      onClick={() => setHidePersonalExpenses((prev) => !prev)}
+                    >
+                      {hidePersonalExpenses ? 'Mostrar mis gastos personales' : 'Ocultar mis gastos personales'}
+                    </button>
+                  )}
+                </div>
+                {pieStats.length > 0 ? (
+                  <Pie
+                    data={pieData}
+                    options={{
+                      responsive: true,
+                      plugins: { legend: { position: 'bottom' } },
+                    }}
+                  />
+                ) : (
+                  <div className="summary-empty">No hay datos para mostrar.</div>
+                )}
               </div>
             </div>
           ) : (
