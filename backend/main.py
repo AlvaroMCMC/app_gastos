@@ -176,20 +176,23 @@ try:
 except Exception as e:
     print(f"Migracion items: {e}")
 
-# Seed inicial de categorías (solo si la tabla está vacía)
+def seed_categories(db: Session):
+    """Crea las categorías iniciales si la tabla está vacía. Idempotente."""
+    if db.query(Category).count() == 0:
+        print("Seed: creando categorías iniciales...")
+        for position, name in enumerate(SUMMARY_CATEGORIES):
+            keywords = RULE_CATEGORY_KEYWORDS.get(name)
+            db.add(Category(
+                name=name,
+                keywords=",".join(keywords) if keywords else None,
+                position=position,
+                is_default=(name == "otros")
+            ))
+        db.commit()
+
 try:
     with SessionLocal() as seed_db:
-        if seed_db.query(Category).count() == 0:
-            print("Seed: creando categorías iniciales...")
-            for position, name in enumerate(SUMMARY_CATEGORIES):
-                keywords = RULE_CATEGORY_KEYWORDS.get(name)
-                seed_db.add(Category(
-                    name=name,
-                    keywords=",".join(keywords) if keywords else None,
-                    position=position,
-                    is_default=(name == "otros")
-                ))
-            seed_db.commit()
+        seed_categories(seed_db)
 except Exception as e:
     print(f"Seed categorias: {e}")
 
@@ -259,8 +262,9 @@ def sync_summary_snapshot(item_id: str, current_user: User, expenses: List[Expen
         )
         db.add(summary)
 
+    used_openai = any(e.ai_model and e.ai_model.startswith("gpt-") for e in expenses)
     summary.generated_by = current_user.id
-    summary.ai_model = OPENAI_MODEL if OPENAI_API_KEY else "rules-v1"
+    summary.ai_model = OPENAI_MODEL if used_openai else "rules-v1"
     summary.categories_json = categories_json
     summary.expenses_processed = len(expenses)
     summary.generated_at = now
@@ -554,7 +558,7 @@ def create_next_month_item(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    item = db.query(Item).filter(Item.id == item_id).first()
+    item = db.query(Item).filter(Item.id == item_id).with_for_update().first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
