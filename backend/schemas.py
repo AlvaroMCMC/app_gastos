@@ -126,6 +126,26 @@ class ExpenseResponse(BaseModel):
             datetime: lambda v: v.strftime('%Y-%m-%dT%H:%M:%S') if v else None
         }
 
+# Category Schemas
+class CategoryCreate(BaseModel):
+    name: str
+    keywords: Optional[str] = None
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    keywords: Optional[str] = None
+
+class CategoryResponse(BaseModel):
+    id: str
+    name: str
+    keywords: Optional[str] = None
+    position: int
+    is_default: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 # Expense Template Schemas
 class ExpenseTemplateBase(BaseModel):
     name: str

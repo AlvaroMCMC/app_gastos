@@ -10,15 +10,16 @@ import re
 import urllib.request
 import urllib.error
 
-from database import engine, get_db, Base, DATABASE_URL
-from models import User, Item, Expense, PendingInvitation, ExpenseTemplate, UserItemBudget, ItemSummary
+from database import engine, get_db, Base, DATABASE_URL, SessionLocal
+from models import User, Item, Expense, PendingInvitation, ExpenseTemplate, UserItemBudget, ItemSummary, Category
 from schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     ItemCreate, ItemUpdate, ItemResponse,
     ExpenseCreate, ExpenseUpdate, ExpenseResponse, ExpenseCategoryUpdate,
     ItemParticipantAdd, ExpenseTemplateCreate, ExpenseTemplateUpdate, ExpenseTemplateResponse,
     UserItemBudgetUpdate, UserItemBudgetResponse,
-    ItemSummaryResponse
+    ItemSummaryResponse,
+    CategoryCreate, CategoryUpdate, CategoryResponse
 )
 from auth import (
     get_password_hash, verify_password, create_access_token,
@@ -175,17 +176,40 @@ try:
 except Exception as e:
     print(f"Migracion items: {e}")
 
-def validate_category(category: str) -> str:
-    normalized = (category or "").strip().lower()
-    return normalized if normalized in SUMMARY_CATEGORIES else "otros"
+# Seed inicial de categorías (solo si la tabla está vacía)
+try:
+    with SessionLocal() as seed_db:
+        if seed_db.query(Category).count() == 0:
+            print("Seed: creando categorías iniciales...")
+            for position, name in enumerate(SUMMARY_CATEGORIES):
+                keywords = RULE_CATEGORY_KEYWORDS.get(name)
+                seed_db.add(Category(
+                    name=name,
+                    keywords=",".join(keywords) if keywords else None,
+                    position=position,
+                    is_default=(name == "otros")
+                ))
+            seed_db.commit()
+except Exception as e:
+    print(f"Seed categorias: {e}")
 
-def classify_expense_with_rules(description: str) -> str:
+def get_category_names(db: Session) -> List[str]:
+    return [c.name for c in db.query(Category).order_by(Category.position).all()]
+
+def validate_category(category: str, db: Session) -> str:
+    normalized = (category or "").strip().lower()
+    return normalized if normalized in get_category_names(db) else "otros"
+
+def classify_expense_with_rules(description: str, db: Session) -> str:
     text_value = (description or "").strip().lower()
     if not text_value:
         return "otros"
-    for category, keywords in RULE_CATEGORY_KEYWORDS.items():
+    for category in db.query(Category).order_by(Category.position).all():
+        if not category.keywords:
+            continue
+        keywords = [k.strip() for k in category.keywords.split(",") if k.strip()]
         if any(keyword in text_value for keyword in keywords):
-            return category
+            return category.name
     return "otros"
 
 def ensure_item_access(item_id: str, current_user: User, db: Session) -> Item:
@@ -196,11 +220,11 @@ def ensure_item_access(item_id: str, current_user: User, db: Session) -> Item:
         raise HTTPException(status_code=403, detail="Not authorized to access this item")
     return item
 
-def build_summary_payload(expenses: List[Expense]) -> Dict[str, List[Dict[str, float]]]:
+def build_summary_payload(expenses: List[Expense], db: Session) -> Dict[str, List[Dict[str, float]]]:
     grouped: Dict[str, Dict[str, Dict[str, float]]] = {}
     for expense in expenses:
         currency = expense.currency or "soles"
-        category = validate_category(expense.ai_category)
+        category = validate_category(expense.ai_category, db)
         grouped.setdefault(currency, {})
         grouped[currency].setdefault(category, {"total_amount": 0.0, "expense_count": 0})
         grouped[currency][category]["total_amount"] += float(expense.amount)
@@ -223,7 +247,7 @@ def build_summary_payload(expenses: List[Expense]) -> Dict[str, List[Dict[str, f
     return result
 
 def sync_summary_snapshot(item_id: str, current_user: User, expenses: List[Expense], db: Session) -> ItemSummary:
-    categories_by_currency = build_summary_payload(expenses)
+    categories_by_currency = build_summary_payload(expenses, db)
     categories_json = json.dumps(categories_by_currency, ensure_ascii=False)
     now = datetime.utcnow()
 
@@ -243,7 +267,7 @@ def sync_summary_snapshot(item_id: str, current_user: User, expenses: List[Expen
     summary.updated_at = now
     return summary
 
-def classify_expenses_with_openai(expenses: List[Expense]) -> Dict[str, Dict[str, float]]:
+def classify_expenses_with_openai(expenses: List[Expense], db: Session) -> Dict[str, Dict[str, float]]:
     if not OPENAI_API_KEY:
         raise RuntimeError("OPENAI_API_KEY is not configured")
 
@@ -260,7 +284,7 @@ def classify_expenses_with_openai(expenses: List[Expense]) -> Dict[str, Dict[str
 
     prompt = (
         "Clasifica cada gasto en una de estas categorias exactas: "
-        + ", ".join(SUMMARY_CATEGORIES)
+        + ", ".join(get_category_names(db))
         + ". Responde SOLO JSON con este formato: "
         + '{"classifications":[{"id":"<expense_id>","category":"<categoria>","confidence":0.0}]}'
         + ". Confidence entre 0 y 1."
@@ -307,7 +331,7 @@ def classify_expenses_with_openai(expenses: List[Expense]) -> Dict[str, Dict[str
         expense_id = item.get("id")
         if not expense_id:
             continue
-        category = validate_category(item.get("category"))
+        category = validate_category(item.get("category"), db)
         confidence = item.get("confidence", 0.0)
         try:
             confidence = max(0.0, min(1.0, float(confidence)))
@@ -914,7 +938,7 @@ def create_expense(
         selected_participants_str = ','.join(expense.selected_participants)
 
     now = datetime.utcnow()
-    auto_category = classify_expense_with_rules(expense.description)
+    auto_category = classify_expense_with_rules(expense.description, db)
 
     new_expense = Expense(
         item_id=item_id,
@@ -1011,7 +1035,7 @@ def update_expense(
     if recategorize_with_rules and expense.description:
         # Solo reaplicar reglas si la clasificación actual no viene de IA OpenAI.
         if not expense.ai_model or not expense.ai_model.startswith("gpt-"):
-            expense.ai_category = classify_expense_with_rules(expense.description)
+            expense.ai_category = classify_expense_with_rules(expense.description, db)
             expense.ai_confidence = 0.35
             expense.ai_model = "rules-v1"
             expense.ai_classified_at = datetime.utcnow()
@@ -1063,7 +1087,7 @@ def recategorize_expense(
 
     if OPENAI_API_KEY:
         try:
-            classifications = classify_expenses_with_openai([expense])
+            classifications = classify_expenses_with_openai([expense], db)
             classification = classifications.get(expense.id)
         except Exception as e:
             print(f"Recategorizacion IA fallida, fallback reglas: {str(e)}")
@@ -1074,7 +1098,7 @@ def recategorize_expense(
         expense.ai_model = OPENAI_MODEL
         expense.ai_classified_at = now
     else:
-        expense.ai_category = classify_expense_with_rules(expense.description)
+        expense.ai_category = classify_expense_with_rules(expense.description, db)
         expense.ai_confidence = 0.35
         expense.ai_model = "rules-v1"
         expense.ai_classified_at = now
@@ -1099,7 +1123,7 @@ def set_expense_category(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    category = validate_category(payload.category)
+    category = validate_category(payload.category, db)
     if category != payload.category.strip().lower():
         raise HTTPException(status_code=400, detail="Invalid category")
 
@@ -1112,11 +1136,98 @@ def set_expense_category(
     db.refresh(expense)
     return expense
 
-@app.get("/api/summary-categories", response_model=List[str])
-def get_summary_categories(
-    current_user: User = Depends(get_current_user)
+# ============= CATEGORIES ENDPOINTS =============
+
+@app.get("/api/categories", response_model=List[CategoryResponse])
+def get_categories(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
-    return SUMMARY_CATEGORIES
+    return db.query(Category).order_by(Category.position).all()
+
+@app.post("/api/categories", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
+def create_category(
+    category: CategoryCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    normalized = category.name.strip().lower()
+    if not normalized:
+        raise HTTPException(status_code=400, detail="El nombre no puede estar vacío")
+
+    existing = db.query(Category).filter(Category.name == normalized).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe una categoría con ese nombre")
+
+    max_position = db.query(Category).count()
+    new_category = Category(
+        name=normalized,
+        keywords=category.keywords.strip() if category.keywords else None,
+        position=max_position,
+        is_default=False
+    )
+    db.add(new_category)
+    db.commit()
+    db.refresh(new_category)
+    return new_category
+
+@app.put("/api/categories/{category_id}", response_model=CategoryResponse)
+def update_category(
+    category_id: str,
+    category_update: CategoryUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_category = db.query(Category).filter(Category.id == category_id).first()
+    if not db_category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    if category_update.name is not None:
+        normalized = category_update.name.strip().lower()
+        if not normalized:
+            raise HTTPException(status_code=400, detail="El nombre no puede estar vacío")
+        if normalized != db_category.name:
+            if db_category.is_default:
+                raise HTTPException(status_code=400, detail="No se puede renombrar la categoría por defecto")
+            existing = db.query(Category).filter(Category.name == normalized).first()
+            if existing:
+                raise HTTPException(status_code=400, detail="Ya existe una categoría con ese nombre")
+            # Reasignar gastos históricos al nuevo nombre
+            db.query(Expense).filter(Expense.ai_category == db_category.name).update(
+                {"ai_category": normalized}
+            )
+            db_category.name = normalized
+
+    if category_update.keywords is not None:
+        db_category.keywords = category_update.keywords.strip() or None
+
+    db.commit()
+    db.refresh(db_category)
+    return db_category
+
+@app.delete("/api/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category(
+    category_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_category = db.query(Category).filter(Category.id == category_id).first()
+    if not db_category:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    if db_category.is_default:
+        raise HTTPException(status_code=400, detail="No se puede eliminar la categoría por defecto")
+
+    # Reasignar gastos que usaban esta categoría a la categoría por defecto
+    default_category = db.query(Category).filter(Category.is_default.is_(True)).first()
+    default_name = default_category.name if default_category else "otros"
+    db.query(Expense).filter(Expense.ai_category == db_category.name).update(
+        {"ai_category": default_name}
+    )
+
+    db.delete(db_category)
+    db.commit()
+    return None
 
 @app.delete("/api/items/{item_id}/expenses/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_expense(
@@ -1166,7 +1277,7 @@ def get_item_summary(
     now = datetime.utcnow()
     for expense in expenses:
         if not expense.ai_category:
-            expense.ai_category = classify_expense_with_rules(expense.description)
+            expense.ai_category = classify_expense_with_rules(expense.description, db)
             expense.ai_confidence = 0.35
             expense.ai_model = "rules-v1"
             expense.ai_classified_at = now
@@ -1206,7 +1317,7 @@ def generate_item_summary(
 
         if OPENAI_API_KEY:
             try:
-                classifications = classify_expenses_with_openai(expenses_to_classify)
+                classifications = classify_expenses_with_openai(expenses_to_classify, db)
             except Exception as e:
                 openai_error = str(e)
 
@@ -1218,7 +1329,7 @@ def generate_item_summary(
                 expense.ai_model = OPENAI_MODEL
                 expense.ai_classified_at = now
             else:
-                expense.ai_category = classify_expense_with_rules(expense.description)
+                expense.ai_category = classify_expense_with_rules(expense.description, db)
                 expense.ai_confidence = 0.35
                 expense.ai_model = "rules-v1"
                 expense.ai_classified_at = now

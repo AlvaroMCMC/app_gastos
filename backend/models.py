@@ -86,6 +86,16 @@ class Expense(Base):
     item = relationship("Item", back_populates="expenses")
     paid_by_user = relationship("User", back_populates="expenses", foreign_keys=[paid_by])
 
+class Category(Base):
+    __tablename__ = "categories"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    name = Column(String, unique=True, nullable=False)
+    keywords = Column(String, nullable=True)  # separadas por coma
+    position = Column(Integer, nullable=False, default=0)
+    is_default = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 class ExpenseTemplate(Base):
     __tablename__ = "expense_templates"
 

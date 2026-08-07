@@ -20,7 +20,10 @@ import {
   toggleExpenseSettled,
   recategorizeExpense,
   setExpenseCategory,
-  getSummaryCategories
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory
 } from '../services/api';
 import { savePendingExpense, getPendingExpensesByItem } from '../utils/offlineDB';
 import { useOffline } from '../context/OfflineContext';
@@ -78,6 +81,72 @@ const TemplateItem = ({ template, onUpdate, onDelete }) => {
   );
 };
 
+// Componente para item de categoría
+const CategoryItem = ({ category, onUpdate, onDelete }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(category.name);
+  const [keywords, setKeywords] = useState(category.keywords || '');
+
+  useEffect(() => {
+    setName(category.name);
+    setKeywords(category.keywords || '');
+  }, [category]);
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      alert('El nombre no puede estar vacío');
+      return;
+    }
+    await onUpdate(category.id, { name: name.trim(), keywords: keywords.trim() });
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setName(category.name);
+    setKeywords(category.keywords || '');
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="template-item category-item">
+      {isEditing ? (
+        <>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength="30"
+            className="template-name-input"
+            placeholder="Nombre de la categoría"
+            disabled={category.is_default}
+            autoFocus
+          />
+          <input
+            type="text"
+            value={keywords}
+            onChange={(e) => setKeywords(e.target.value)}
+            className="template-name-input category-keywords-input"
+            placeholder="Palabras clave (separadas por coma)"
+          />
+          <button className="btn-save-template" onClick={handleSave}>✓</button>
+          <button className="btn-cancel-template" onClick={handleCancel}>✗</button>
+        </>
+      ) : (
+        <>
+          <span className="template-preview">
+            {category.name}
+            {category.keywords && <small className="category-keywords-preview"> ({category.keywords})</small>}
+          </span>
+          <button className="btn-edit-template" onClick={() => setIsEditing(true)}>✏️</button>
+          {!category.is_default && (
+            <button className="btn-delete-template" onClick={() => onDelete(category.id)}>🗑️</button>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 function Expenses() {
   const { itemId } = useParams();
   const navigate = useNavigate();
@@ -106,7 +175,8 @@ function Expenses() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedExpenseForCategory, setSelectedExpenseForCategory] = useState(null);
   const [selectedManualCategory, setSelectedManualCategory] = useState('');
-  const [summaryCategories, setSummaryCategories] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [showCategoryConfig, setShowCategoryConfig] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   const { isOnline, updatePendingCount } = useOffline();
@@ -162,7 +232,7 @@ function Expenses() {
     fetchItemAndExpenses();
     fetchUsersAndCurrentUser();
     fetchPendingExpenses();
-    fetchSummaryCategories();
+    fetchCategories();
   }, [itemId]);
 
   // Update clock every minute
@@ -183,12 +253,12 @@ function Expenses() {
     }
   };
 
-  const fetchSummaryCategories = async () => {
+  const fetchCategories = async () => {
     try {
-      const response = await getSummaryCategories();
-      setSummaryCategories(response.data || []);
+      const response = await getCategories();
+      setCategories(response.data || []);
     } catch (error) {
-      console.error('Error fetching summary categories:', error);
+      console.error('Error fetching categories:', error);
     }
   };
 
@@ -1011,6 +1081,38 @@ function Expenses() {
     }
   };
 
+  const handleAddCategory = async () => {
+    const name = window.prompt('Nombre de la nueva categoría:');
+    if (!name || !name.trim()) return;
+
+    try {
+      const response = await createCategory(name.trim(), '');
+      setCategories([...categories, response.data]);
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Error al crear categoría');
+    }
+  };
+
+  const handleUpdateCategory = async (categoryId, data) => {
+    try {
+      const response = await updateCategory(categoryId, data);
+      setCategories(categories.map(c => c.id === categoryId ? response.data : c));
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Error al actualizar categoría');
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    if (!confirm('¿Eliminar esta categoría? Los gastos que la usan pasarán a "Otros".')) return;
+
+    try {
+      await deleteCategory(categoryId);
+      setCategories(categories.filter(c => c.id !== categoryId));
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Error al eliminar categoría');
+    }
+  };
+
   if (!item) {
     return <div className="loading">Cargando...</div>;
   }
@@ -1742,7 +1844,17 @@ function Expenses() {
       {showCategoryModal && (
         <div className="modal-overlay" onClick={() => setShowCategoryModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Categoría Manual</h2>
+            <div className="quick-expense-header">
+              <h2>Categoría Manual</h2>
+              <button
+                type="button"
+                className="btn-config-templates"
+                onClick={() => setShowCategoryConfig(true)}
+                title="Gestionar categorías"
+              >
+                ⚙️
+              </button>
+            </div>
             <form onSubmit={handleSaveManualCategory}>
               <div className="form-group">
                 <label>Categoría</label>
@@ -1752,9 +1864,9 @@ function Expenses() {
                   required
                 >
                   <option value="">Seleccionar...</option>
-                  {summaryCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {formatCategoryLabel(category)}
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.name}>
+                      {formatCategoryLabel(category.name)}
                     </option>
                   ))}
                 </select>
@@ -1772,6 +1884,35 @@ function Expenses() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showCategoryConfig && (
+        <div className="modal-overlay" onClick={() => setShowCategoryConfig(false)}>
+          <div className="modal-content template-config-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Gestionar Categorías</h3>
+
+            <div className="template-list">
+              {categories.map((category) => (
+                <CategoryItem
+                  key={category.id}
+                  category={category}
+                  onUpdate={handleUpdateCategory}
+                  onDelete={handleDeleteCategory}
+                />
+              ))}
+            </div>
+
+            <button className="btn-add-template" onClick={handleAddCategory}>
+              + Agregar Categoría
+            </button>
+
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowCategoryConfig(false)}>
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1145,6 +1145,21 @@
   font-size: 16px;
 }
 
+.category-item {
+  flex-wrap: wrap;
+}
+
+.category-keywords-input {
+  min-width: 140px;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.category-keywords-preview {
+  color: #888;
+  font-weight: 400;
+}
+
 .emoji-input {
   width: 50px;
   text-align: center;

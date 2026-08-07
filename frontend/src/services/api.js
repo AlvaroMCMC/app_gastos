@@ -143,8 +143,20 @@ export const setExpenseCategory = (itemId, expenseId, category) => {
   return api.patch(`/items/${itemId}/expenses/${expenseId}/category`, { category });
 };
 
-export const getSummaryCategories = () => {
-  return api.get('/summary-categories');
+export const getCategories = () => {
+  return api.get('/categories');
+};
+
+export const createCategory = (name, keywords) => {
+  return api.post('/categories', { name, keywords });
+};
+
+export const updateCategory = (categoryId, data) => {
+  return api.put(`/categories/${categoryId}`, data);
+};
+
+export const deleteCategory = (categoryId) => {
+  return api.delete(`/categories/${categoryId}`);
 };
 
 // Item Summary (AI)
