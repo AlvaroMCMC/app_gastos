@@ -58,8 +58,6 @@ function Summary() {
       if (err.response?.status === 404) {
         setSummary(null);
         setError('');
-      } else if (err.response?.status === 503) {
-        setError('Falta configurar OPENAI_API_KEY en backend.');
       } else {
         setError(err.response?.data?.detail || 'No se pudo cargar el resumen.');
       }
@@ -99,11 +97,7 @@ function Summary() {
       const currencies = Object.keys(payload.categories_by_currency || {});
       setSelectedCurrency(currencies[0] || '');
     } catch (err) {
-      if (err.response?.status === 503) {
-        setError('Falta configurar OPENAI_API_KEY en backend.');
-      } else {
-        setError(err.response?.data?.detail || 'No se pudo generar el resumen con IA.');
-      }
+      setError(err.response?.data?.detail || 'No se pudo generar el resumen.');
     } finally {
       setGenerating(false);
     }
@@ -166,7 +160,7 @@ function Summary() {
         </button>
       </div>
 
-      <h1 className="summary-title">Resumen IA - {item?.name}</h1>
+      <h1 className="summary-title">Resumen - {item?.name}</h1>
 
       {error && <div className="summary-error">{error}</div>}
 
@@ -180,7 +174,6 @@ function Summary() {
         <>
           <div className="summary-meta">
             <span>Gastos procesados: {summary.expenses_processed}</span>
-            <span>Modelo: {summary.ai_model || '-'}</span>
             <span>Generado: {new Date(`${summary.generated_at}Z`).toLocaleString('es-PE')}</span>
           </div>
 

@@ -57,8 +57,8 @@ pytest -v
 ```
 
 - `tests/test_unit.py` — funciones puras (clasificación por reglas, validación de categorías, generación del nombre del siguiente mes).
-- `tests/test_integration.py` — flujos completos vía API: auth, items, participantes, presupuesto, gastos, cadena de items mensuales, categorías, resumen IA.
-- `tests/test_chaos.py` — fallas de dependencias externas: caída de la base de datos, caída/timeout/respuesta malformada de OpenAI, y una condición de carrera real al crear "siguiente mes" concurrentemente (el fix con `with_for_update()` solo es efectivo en Postgres; el test se salta en SQLite con el motivo documentado).
+- `tests/test_integration.py` — flujos completos vía API: auth, items, participantes, presupuesto, gastos, cadena de items mensuales, categorías, resumen.
+- `tests/test_chaos.py` — caída de la base de datos y una condición de carrera real al crear "siguiente mes" concurrentemente (el fix con `with_for_update()` solo es efectivo en Postgres; el test se salta en SQLite con el motivo documentado).
 
 ## Documentación API
 

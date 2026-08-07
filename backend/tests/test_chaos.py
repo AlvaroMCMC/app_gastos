@@ -1,6 +1,4 @@
-import json
 import threading
-import urllib.error
 from unittest.mock import patch
 
 import pytest
@@ -9,17 +7,6 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 import main
-
-
-def _expense_payload(**overrides):
-    payload = {
-        "amount": 50.0,
-        "description": "Uber al trabajo",
-        "payment_method": "banco",
-        "currency": "soles",
-    }
-    payload.update(overrides)
-    return payload
 
 
 # ---- Caída de base de datos ----
@@ -49,75 +36,6 @@ def test_app_recovers_after_db_outage(client, auth_headers):
     # Fuera del patch, un request normal debe funcionar sin problema
     r = client.get("/api/items", headers=headers)
     assert r.status_code == 200
-
-
-# ---- OpenAI caído / timeout ----
-
-def test_openai_timeout_falls_back_to_rules(client, auth_headers, monkeypatch):
-    headers = auth_headers()
-    monkeypatch.setattr(main, "OPENAI_API_KEY", "fake-key-for-test")
-
-    item_id = client.post("/api/items", json={"name": "Item", "item_type": "personal"}, headers=headers).json()["id"]
-    expense_id = client.post(
-        f"/api/items/{item_id}/expenses", json=_expense_payload(), headers=headers
-    ).json()["id"]
-
-    with patch.object(main.urllib.request, "urlopen", side_effect=urllib.error.URLError("timed out")):
-        r = client.post(f"/api/items/{item_id}/expenses/{expense_id}/recategorize", headers=headers)
-
-    assert r.status_code == 200
-    assert r.json()["ai_model"] == "rules-v1"
-    assert r.json()["ai_category"] == "transporte"
-
-
-def test_openai_down_during_summary_generation_falls_back_to_rules(client, auth_headers, monkeypatch):
-    headers = auth_headers()
-    monkeypatch.setattr(main, "OPENAI_API_KEY", "fake-key-for-test")
-
-    item_id = client.post("/api/items", json={"name": "Item", "item_type": "personal"}, headers=headers).json()["id"]
-    client.post(f"/api/items/{item_id}/expenses", json=_expense_payload(), headers=headers)
-
-    with patch.object(main.urllib.request, "urlopen", side_effect=urllib.error.URLError("connection refused")):
-        r = client.post(f"/api/items/{item_id}/summary/generate", headers=headers)
-
-    assert r.status_code == 200
-    assert r.json()["ai_model"] == "rules-v1"
-
-
-# ---- OpenAI responde JSON malformado ----
-
-class _FakeResponse:
-    def __init__(self, body: bytes):
-        self._body = body
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        return False
-
-    def read(self):
-        return self._body
-
-
-def test_openai_malformed_json_falls_back_to_rules(client, auth_headers, monkeypatch):
-    headers = auth_headers()
-    monkeypatch.setattr(main, "OPENAI_API_KEY", "fake-key-for-test")
-
-    item_id = client.post("/api/items", json={"name": "Item", "item_type": "personal"}, headers=headers).json()["id"]
-    expense_id = client.post(
-        f"/api/items/{item_id}/expenses", json=_expense_payload(), headers=headers
-    ).json()["id"]
-
-    malformed_openai_response = json.dumps({
-        "choices": [{"message": {"content": "esto no es json valido {{{"}}]
-    }).encode("utf-8")
-
-    with patch.object(main.urllib.request, "urlopen", return_value=_FakeResponse(malformed_openai_response)):
-        r = client.post(f"/api/items/{item_id}/expenses/{expense_id}/recategorize", headers=headers)
-
-    assert r.status_code == 200
-    assert r.json()["ai_model"] == "rules-v1"
 
 
 # ---- Concurrencia: doble "crear siguiente mes" ----

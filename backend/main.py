@@ -8,16 +8,14 @@ from typing import List, Dict
 import os
 import json
 import re
-import urllib.request
-import urllib.error
 
 from database import engine, get_db, Base, DATABASE_URL, SessionLocal
-from models import User, Item, Expense, PendingInvitation, ExpenseTemplate, UserItemBudget, ItemSummary, Category, UserIncome
+from models import User, Item, Expense, PendingInvitation, UserItemBudget, ItemSummary, Category, UserIncome
 from schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     ItemCreate, ItemUpdate, ItemResponse,
     ExpenseCreate, ExpenseUpdate, ExpenseResponse, ExpenseCategoryUpdate,
-    ItemParticipantAdd, ExpenseTemplateCreate, ExpenseTemplateUpdate, ExpenseTemplateResponse,
+    ItemParticipantAdd,
     UserItemBudgetUpdate, UserItemBudgetResponse,
     ItemSummaryResponse,
     CategoryCreate, CategoryUpdate, CategoryResponse,
@@ -33,8 +31,6 @@ Base.metadata.create_all(bind=engine)
 
 IS_SQLITE = DATABASE_URL.startswith("sqlite")
 ALLOW_DESTRUCTIVE_MIGRATIONS = os.getenv("ALLOW_DESTRUCTIVE_MIGRATIONS", "false").lower() == "true"
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 SUMMARY_CATEGORIES = [
     "alimentacion",
@@ -84,19 +80,6 @@ def column_exists(conn, table, column):
         return result.fetchone() is not None
 
 # Migraciones destructivas (DROP COLUMN) deshabilitadas por defecto para proteger datos.
-if ALLOW_DESTRUCTIVE_MIGRATIONS:
-    # Migración: Eliminar columna emoji de expense_templates si existe
-    try:
-        with engine.connect() as conn:
-            if column_exists(conn, 'expense_templates', 'emoji'):
-                print("Migrando: Eliminando columna 'emoji' de expense_templates...")
-                conn.execute(text("ALTER TABLE expense_templates DROP COLUMN emoji"))
-                conn.commit()
-    except Exception as e:
-        print(f"Migracion emoji: {e}")
-else:
-    print("Migraciones destructivas deshabilitadas (ALLOW_DESTRUCTIVE_MIGRATIONS=false).")
-
 if ALLOW_DESTRUCTIVE_MIGRATIONS:
     # Migración: Eliminar columnas budget de items (ahora es personal por usuario)
     try:
@@ -361,87 +344,13 @@ def sync_summary_snapshot(item_id: str, current_user: User, expenses: List[Expen
         )
         db.add(summary)
 
-    used_openai = any(e.ai_model and e.ai_model.startswith("gpt-") for e in expenses)
     summary.generated_by = current_user.id
-    summary.ai_model = OPENAI_MODEL if used_openai else "rules-v1"
+    summary.ai_model = "rules-v1"
     summary.categories_json = categories_json
     summary.expenses_processed = len(expenses)
     summary.generated_at = now
     summary.updated_at = now
     return summary
-
-def classify_expenses_with_openai(expenses: List[Expense], db: Session) -> Dict[str, Dict[str, float]]:
-    if not OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY is not configured")
-
-    expenses_for_model = [
-        {
-            "id": expense.id,
-            "description": expense.description,
-            "amount": expense.amount,
-            "currency": expense.currency,
-            "payment_method": expense.payment_method,
-        }
-        for expense in expenses
-    ]
-
-    prompt = (
-        "Clasifica cada gasto en una de estas categorias exactas: "
-        + ", ".join(get_category_names(db))
-        + ". Responde SOLO JSON con este formato: "
-        + '{"classifications":[{"id":"<expense_id>","category":"<categoria>","confidence":0.0}]}'
-        + ". Confidence entre 0 y 1."
-        + f"\nGastos:\n{json.dumps(expenses_for_model, ensure_ascii=False)}"
-    )
-
-    body = {
-        "model": OPENAI_MODEL,
-        "messages": [
-            {"role": "system", "content": "Eres un clasificador de gastos y devuelves JSON válido únicamente."},
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": 0
-    }
-
-    request = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-
-    try:
-        with urllib.request.urlopen(request, timeout=45) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-            content = payload["choices"][0]["message"]["content"]
-    except urllib.error.HTTPError as e:
-        error_payload = e.read().decode("utf-8", errors="ignore")
-        raise RuntimeError(f"OpenAI HTTP error: {error_payload}")
-    except Exception as e:
-        raise RuntimeError(f"OpenAI request failed: {str(e)}")
-
-    try:
-        parsed = json.loads(content)
-        classifications = parsed.get("classifications", [])
-    except Exception:
-        raise RuntimeError("Invalid JSON returned by AI model")
-
-    mapping: Dict[str, Dict[str, float]] = {}
-    for item in classifications:
-        expense_id = item.get("id")
-        if not expense_id:
-            continue
-        category = validate_category(item.get("category"), db)
-        confidence = item.get("confidence", 0.0)
-        try:
-            confidence = max(0.0, min(1.0, float(confidence)))
-        except Exception:
-            confidence = 0.0
-        mapping[expense_id] = {"category": category, "confidence": confidence}
-    return mapping
 
 app = FastAPI(title="App Gastos API")
 
@@ -1194,46 +1103,6 @@ def toggle_expense_settled(
     db.refresh(expense)
     return expense
 
-@app.post("/api/items/{item_id}/expenses/{expense_id}/recategorize", response_model=ExpenseResponse)
-def recategorize_expense(
-    item_id: str,
-    expense_id: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    item = ensure_item_access(item_id, current_user, db)
-    expense = db.query(Expense).filter(
-        Expense.id == expense_id,
-        Expense.item_id == item.id
-    ).first()
-    if not expense:
-        raise HTTPException(status_code=404, detail="Expense not found")
-
-    now = datetime.utcnow()
-    classification = None
-
-    if OPENAI_API_KEY:
-        try:
-            classifications = classify_expenses_with_openai([expense], db)
-            classification = classifications.get(expense.id)
-        except Exception as e:
-            print(f"Recategorizacion IA fallida, fallback reglas: {str(e)}")
-
-    if classification:
-        expense.ai_category = classification["category"]
-        expense.ai_confidence = classification["confidence"]
-        expense.ai_model = OPENAI_MODEL
-        expense.ai_classified_at = now
-    else:
-        expense.ai_category = classify_expense_with_rules(expense.description, db)
-        expense.ai_confidence = 0.35
-        expense.ai_model = "rules-v1"
-        expense.ai_classified_at = now
-
-    db.commit()
-    db.refresh(expense)
-    return expense
-
 @app.patch("/api/items/{item_id}/expenses/{expense_id}/category", response_model=ExpenseResponse)
 def set_expense_category(
     item_id: str,
@@ -1436,33 +1305,12 @@ def generate_item_summary(
         raise HTTPException(status_code=400, detail="No expenses found for this item")
 
     now = datetime.utcnow()
-    expenses_to_classify = [expense for expense in expenses if not expense.ai_category]
-
-    if expenses_to_classify:
-        classifications = {}
-        openai_error = None
-
-        if OPENAI_API_KEY:
-            try:
-                classifications = classify_expenses_with_openai(expenses_to_classify, db)
-            except Exception as e:
-                openai_error = str(e)
-
-        for expense in expenses_to_classify:
-            classification = classifications.get(expense.id)
-            if classification:
-                expense.ai_category = classification["category"]
-                expense.ai_confidence = classification["confidence"]
-                expense.ai_model = OPENAI_MODEL
-                expense.ai_classified_at = now
-            else:
-                expense.ai_category = classify_expense_with_rules(expense.description, db)
-                expense.ai_confidence = 0.35
-                expense.ai_model = "rules-v1"
-                expense.ai_classified_at = now
-
-        if openai_error:
-            print(f"Resumen IA: fallback a reglas por error OpenAI: {openai_error}")
+    for expense in expenses:
+        if not expense.ai_category:
+            expense.ai_category = classify_expense_with_rules(expense.description, db)
+            expense.ai_confidence = 0.35
+            expense.ai_model = "rules-v1"
+            expense.ai_classified_at = now
 
     summary = sync_summary_snapshot(item_id, current_user, expenses, db)
     db.commit()
@@ -1574,142 +1422,6 @@ def delete_income(
     db.delete(db_income)
     db.commit()
     return None
-
-# ============================================
-# EXPENSE TEMPLATES
-# ============================================
-
-# Plantillas predefinidas (default para nuevos usuarios)
-DEFAULT_TEMPLATES = [
-    {"name": "Comida afuera", "position": 0},
-    {"name": "Transporte", "position": 1},
-    {"name": "Ropa", "position": 2},
-    {"name": "Farmacia", "position": 3},
-    {"name": "Supermercado", "position": 4},
-    {"name": "Entretenimiento", "position": 5},
-]
-
-@app.get("/api/expense-templates", response_model=List[ExpenseTemplateResponse])
-def get_user_expense_templates(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Obtener plantillas de gastos del usuario. Si no tiene, crear las predefinidas."""
-
-    templates = db.query(ExpenseTemplate).filter(
-        ExpenseTemplate.user_id == current_user.id
-    ).order_by(ExpenseTemplate.position).all()
-
-    # Si el usuario no tiene plantillas, crear las predefinidas
-    if not templates:
-        for template_data in DEFAULT_TEMPLATES:
-            new_template = ExpenseTemplate(
-                user_id=current_user.id,
-                **template_data
-            )
-            db.add(new_template)
-        db.commit()
-
-        # Recargar las plantillas creadas
-        templates = db.query(ExpenseTemplate).filter(
-            ExpenseTemplate.user_id == current_user.id
-        ).order_by(ExpenseTemplate.position).all()
-
-    return templates
-
-@app.post("/api/expense-templates", response_model=ExpenseTemplateResponse)
-def create_expense_template(
-    template: ExpenseTemplateCreate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Crear nueva plantilla de gasto (máximo 8 por usuario)."""
-
-    # Verificar que no exceda el máximo de 8
-    template_count = db.query(ExpenseTemplate).filter(
-        ExpenseTemplate.user_id == current_user.id
-    ).count()
-
-    if template_count >= 8:
-        raise HTTPException(status_code=400, detail="Máximo 8 plantillas permitidas")
-
-    new_template = ExpenseTemplate(
-        user_id=current_user.id,
-        name=template.name,
-        position=template.position
-    )
-    db.add(new_template)
-    db.commit()
-    db.refresh(new_template)
-
-    return new_template
-
-@app.put("/api/expense-templates/{template_id}", response_model=ExpenseTemplateResponse)
-def update_expense_template(
-    template_id: str,
-    template: ExpenseTemplateUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Actualizar plantilla de gasto."""
-
-    db_template = db.query(ExpenseTemplate).filter(
-        ExpenseTemplate.id == template_id,
-        ExpenseTemplate.user_id == current_user.id
-    ).first()
-
-    if not db_template:
-        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
-
-    # Actualizar solo los campos proporcionados
-    if template.name is not None:
-        db_template.name = template.name
-    if template.position is not None:
-        db_template.position = template.position
-
-    db.commit()
-    db.refresh(db_template)
-
-    return db_template
-
-@app.delete("/api/expense-templates/{template_id}")
-def delete_expense_template(
-    template_id: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Eliminar plantilla de gasto."""
-
-    db_template = db.query(ExpenseTemplate).filter(
-        ExpenseTemplate.id == template_id,
-        ExpenseTemplate.user_id == current_user.id
-    ).first()
-
-    if not db_template:
-        raise HTTPException(status_code=404, detail="Plantilla no encontrada")
-
-    db.delete(db_template)
-    db.commit()
-
-    return {"message": "Plantilla eliminada"}
-
-@app.post("/api/expense-templates/reorder")
-def reorder_expense_templates(
-    template_ids: List[str],
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Reordenar plantillas de gastos."""
-
-    for index, template_id in enumerate(template_ids):
-        db_template = db.query(ExpenseTemplate).filter(
-            ExpenseTemplate.id == template_id,
-            ExpenseTemplate.user_id == current_user.id
-        ).first()
-
-        if db_template:
-            db_template.position = index
-
-    db.commit()
-
-    return {"message": "Plantillas reordenadas"}
 
 @app.get("/")
 def root():

@@ -285,14 +285,3 @@ def test_generate_summary_without_openai_uses_rules(client, auth_headers):
     assert r.json()["ai_model"] == "rules-v1"
 
 
-def test_recategorize_without_openai_uses_rules(client, auth_headers):
-    headers = auth_headers()
-    item_id = client.post("/api/items", json={"name": "Item", "item_type": "personal"}, headers=headers).json()["id"]
-    expense_id = client.post(
-        f"/api/items/{item_id}/expenses", json=_expense_payload(description="Uber al trabajo"), headers=headers
-    ).json()["id"]
-
-    r = client.post(f"/api/items/{item_id}/expenses/{expense_id}/recategorize", headers=headers)
-    assert r.status_code == 200
-    assert r.json()["ai_category"] == "transporte"
-    assert r.json()["ai_model"] == "rules-v1"

@@ -11,12 +11,7 @@ import {
   getItemParticipants,
   addItemParticipant,
   removeItemParticipant,
-  getExpenseTemplates,
-  createExpenseTemplate,
-  updateExpenseTemplate,
-  deleteExpenseTemplate,
   toggleExpenseSettled,
-  recategorizeExpense,
   setExpenseCategory,
   getCategories,
   createCategory,
@@ -28,57 +23,6 @@ import { savePendingExpense, getPendingExpensesByItem } from '../utils/offlineDB
 import { useOffline } from '../context/OfflineContext';
 import OfflineIndicator from '../components/OfflineIndicator';
 import '../styles/Expenses.css';
-
-// Componente para item de template
-const TemplateItem = ({ template, onUpdate, onDelete }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(template.name);
-
-  // Sincronizar estado cuando el template cambia
-  useEffect(() => {
-    setName(template.name);
-  }, [template]);
-
-  const handleSave = async () => {
-    if (!name.trim()) {
-      alert('El nombre no puede estar vacío');
-      return;
-    }
-    await onUpdate(template.id, { name: name.trim() });
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setName(template.name);
-    setIsEditing(false);
-  };
-
-  return (
-    <div className="template-item">
-      {isEditing ? (
-        <>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength="30"
-            className="template-name-input"
-            placeholder="Nombre del gasto"
-            autoFocus
-          />
-          <button className="btn-save-template" onClick={handleSave}>✓</button>
-          <button className="btn-cancel-template" onClick={handleCancel}>✗</button>
-        </>
-      ) : (
-        <>
-          <span className="template-preview">{template.name}</span>
-          <button className="btn-edit-template" onClick={() => setIsEditing(true)}>✏️</button>
-          <button className="btn-delete-template" onClick={() => onDelete(template.id)}>🗑️</button>
-        </>
-      )}
-    </div>
-  );
-};
 
 // Componente para item de categoría
 const CategoryItem = ({ category, onUpdate, onDelete }) => {
@@ -165,8 +109,6 @@ function Expenses() {
   const [showSelectParticipantsModal, setShowSelectParticipantsModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
-  const [expenseTemplates, setExpenseTemplates] = useState([]);
-  const [showTemplateConfig, setShowTemplateConfig] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedExpenseForCategory, setSelectedExpenseForCategory] = useState(null);
   const [selectedManualCategory, setSelectedManualCategory] = useState('');
@@ -284,14 +226,12 @@ function Expenses() {
 
   const fetchItemAndExpenses = async () => {
     try {
-      const [itemResponse, expensesResponse, templatesResponse] = await Promise.all([
+      const [itemResponse, expensesResponse] = await Promise.all([
         getItem(itemId),
-        getExpenses(itemId),
-        getExpenseTemplates()
+        getExpenses(itemId)
       ]);
       setItem(itemResponse.data);
       setExpenses(sortExpensesNewestFirst(expensesResponse.data));
-      setExpenseTemplates(templatesResponse.data);
     } catch (error) {
       console.error('Error fetching data:', error);
       alert('Error al cargar los datos');
@@ -494,17 +434,6 @@ function Expenses() {
     }
   };
 
-  const handleRecategorizeExpense = async (expenseId) => {
-    try {
-      const response = await recategorizeExpense(itemId, expenseId);
-      setExpenses(prev => sortExpensesNewestFirst(prev.map(e => e.id === expenseId ? response.data : e)));
-    } catch (error) {
-      console.error('Error recategorizing expense:', error);
-      const detail = error.response?.data?.detail || 'Error al recategorizar el gasto';
-      alert(detail);
-    }
-  };
-
   const openManualCategoryModal = (expense) => {
     setSelectedExpenseForCategory(expense);
     setSelectedManualCategory(expense.ai_category || '');
@@ -527,7 +456,7 @@ function Expenses() {
   };
 
   const formatCategoryLabel = (category) => {
-    if (!category) return 'Sin categoría IA';
+    if (!category) return 'Sin categoría';
     const text = category.replace(/_/g, ' ');
     return text.charAt(0).toUpperCase() + text.slice(1);
   };
@@ -1027,43 +956,6 @@ function Expenses() {
     return { youOwe, owedToYou, youOweDetails, owedToYouDetails };
   };
 
-  // Funciones de manejo de templates
-  const handleAddTemplate = async () => {
-    try {
-      const newTemplate = {
-        name: "Nuevo gasto",
-        position: expenseTemplates.length
-      };
-
-      const response = await createExpenseTemplate(newTemplate);
-      setExpenseTemplates([...expenseTemplates, response.data]);
-    } catch (error) {
-      alert(error.response?.data?.detail || "Error al crear plantilla");
-    }
-  };
-
-  const handleUpdateTemplate = async (templateId, data) => {
-    try {
-      const response = await updateExpenseTemplate(templateId, data);
-      setExpenseTemplates(expenseTemplates.map(t =>
-        t.id === templateId ? response.data : t
-      ));
-    } catch {
-      alert("Error al actualizar plantilla");
-    }
-  };
-
-  const handleDeleteTemplate = async (templateId) => {
-    if (!confirm("¿Eliminar esta plantilla?")) return;
-
-    try {
-      await deleteExpenseTemplate(templateId);
-      setExpenseTemplates(expenseTemplates.filter(t => t.id !== templateId));
-    } catch {
-      alert("Error al eliminar plantilla");
-    }
-  };
-
   const handleAddCategory = async () => {
     const name = window.prompt('Nombre de la nueva categoría:');
     if (!name || !name.trim()) return;
@@ -1110,7 +1002,7 @@ function Expenses() {
           ← Volver
         </button>
         <button onClick={() => navigate(`/items/${itemId}/summary`)} className="btn-summary-link">
-          Resumen IA
+          Resumen
         </button>
         {item.previous_item_id && (
           <button onClick={() => navigate(`/items/${item.previous_item_id}/expenses`)} className="btn-secondary">
@@ -1259,35 +1151,6 @@ function Expenses() {
         </button>
       </div>
 
-      <div className="quick-expense-header">
-        <h4>Gastos Comunes</h4>
-        <button
-          className="btn-config-templates"
-          onClick={() => setShowTemplateConfig(true)}
-          title="Configurar gastos comunes"
-        >
-          ⚙️
-        </button>
-      </div>
-
-      <div className="quick-expense-buttons">
-        {expenseTemplates.map((template) => (
-          <button
-            key={template.id}
-            onClick={() => handleOpenModal(null, template.name)}
-            className="btn-quick"
-          >
-            {template.name}
-          </button>
-        ))}
-
-        {expenseTemplates.length === 0 && (
-          <p className="no-templates-message">
-            No tienes gastos comunes configurados. Haz clic en ⚙️ para agregar.
-          </p>
-        )}
-      </div>
-
       <div className="filter-bar">
         <button
           className={`filter-btn ${activeFilter === 'todos' ? 'active' : ''}`}
@@ -1360,7 +1223,7 @@ function Expenses() {
                   <div className="expense-info">
                     <div className="expense-title-row">
                       <h3>{expense.description}</h3>
-                      <span className="expense-category-badge" title={`Modelo: ${expense.ai_model || 'N/A'}`}>
+                      <span className="expense-category-badge">
                         {formatCategoryLabel(expense.ai_category)}
                       </span>
                       {expense.is_installment && expense.installment_number && expense.installment_total && (
@@ -1413,13 +1276,6 @@ function Expenses() {
                     title="Elegir categoría manual"
                   >
                     Categoría
-                  </button>
-                  <button
-                    onClick={() => handleRecategorizeExpense(expense.id)}
-                    className="btn-recategorize"
-                    title="Forzar recategorización IA de este gasto"
-                  >
-                    Recategorizar
                   </button>
                   <button
                     onClick={() => handleToggleSettled(expense.id)}
@@ -1757,39 +1613,6 @@ function Expenses() {
                 disabled={formData.selected_participants?.length === 0}
               >
                 Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de configuración de plantillas */}
-      {showTemplateConfig && (
-        <div className="modal-overlay" onClick={() => setShowTemplateConfig(false)}>
-          <div className="modal-content template-config-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Configurar Gastos Comunes</h3>
-            <p className="template-subtitle">Máximo 8 plantillas</p>
-
-            <div className="template-list">
-              {expenseTemplates.map((template) => (
-                <TemplateItem
-                  key={template.id}
-                  template={template}
-                  onUpdate={handleUpdateTemplate}
-                  onDelete={handleDeleteTemplate}
-                />
-              ))}
-            </div>
-
-            {expenseTemplates.length < 8 && (
-              <button className="btn-add-template" onClick={handleAddTemplate}>
-                + Agregar Plantilla
-              </button>
-            )}
-
-            <div className="modal-actions">
-              <button className="btn-secondary" onClick={() => setShowTemplateConfig(false)}>
-                Cerrar
               </button>
             </div>
           </div>

@@ -149,30 +149,6 @@ class CategoryResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Expense Template Schemas
-class ExpenseTemplateBase(BaseModel):
-    name: str
-    position: int = 0
-
-class ExpenseTemplateCreate(ExpenseTemplateBase):
-    pass
-
-class ExpenseTemplateUpdate(BaseModel):
-    name: Optional[str] = None
-    position: Optional[int] = None
-
-class ExpenseTemplateResponse(ExpenseTemplateBase):
-    id: str
-    user_id: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            datetime: lambda v: v.strftime('%Y-%m-%dT%H:%M:%S') if v else None
-        }
-
-
 # User Item Budget Schemas
 class UserItemBudgetBase(BaseModel):
     budget_soles: float = 0.0

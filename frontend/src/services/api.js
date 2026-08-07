@@ -135,10 +135,6 @@ export const toggleExpenseSettled = (itemId, expenseId) => {
   return api.patch(`/items/${itemId}/expenses/${expenseId}/settled`);
 };
 
-export const recategorizeExpense = (itemId, expenseId) => {
-  return api.post(`/items/${itemId}/expenses/${expenseId}/recategorize`);
-};
-
 export const setExpenseCategory = (itemId, expenseId, category) => {
   return api.patch(`/items/${itemId}/expenses/${expenseId}/category`, { category });
 };
@@ -176,34 +172,13 @@ export const deleteIncome = (incomeId) => {
   return api.delete(`/capital/incomes/${incomeId}`);
 };
 
-// Item Summary (AI)
+// Item Summary
 export const getItemSummary = (itemId) => {
   return api.get(`/items/${itemId}/summary`);
 };
 
 export const generateItemSummary = (itemId) => {
   return api.post(`/items/${itemId}/summary/generate`);
-};
-
-// Expense Templates
-export const getExpenseTemplates = () => {
-  return api.get('/expense-templates');
-};
-
-export const createExpenseTemplate = (data) => {
-  return api.post('/expense-templates', data);
-};
-
-export const updateExpenseTemplate = (templateId, data) => {
-  return api.put(`/expense-templates/${templateId}`, data);
-};
-
-export const deleteExpenseTemplate = (templateId) => {
-  return api.delete(`/expense-templates/${templateId}`);
-};
-
-export const reorderExpenseTemplates = (templateIds) => {
-  return api.post('/expense-templates/reorder', templateIds);
 };
 
 export default api;

@@ -29,7 +29,6 @@ class User(Base):
     items = relationship("Item", back_populates="owner")
     expenses = relationship("Expense", back_populates="paid_by_user", foreign_keys="Expense.paid_by")
     shared_items = relationship("Item", secondary=item_participants, back_populates="participants")
-    expense_templates = relationship("ExpenseTemplate", back_populates="user", cascade="all, delete-orphan")
 
 class Item(Base):
     __tablename__ = "items"
@@ -96,18 +95,6 @@ class Category(Base):
     position = Column(Integer, nullable=False, default=0)
     is_default = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-
-class ExpenseTemplate(Base):
-    __tablename__ = "expense_templates"
-
-    id = Column(String, primary_key=True, default=generate_uuid)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    name = Column(String, nullable=False)  # "Comida afuera"
-    position = Column(Integer, nullable=False, default=0)  # Orden de visualización
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-
-    # Relación con usuario
-    user = relationship("User", back_populates="expense_templates")
 
 class UserIncome(Base):
     __tablename__ = "user_incomes"

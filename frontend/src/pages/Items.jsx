@@ -163,7 +163,7 @@ function Items() {
                 onClick={() => navigate(`/items/${item.id}/summary`)}
                 className="btn-secondary"
               >
-                Resumen IA
+                Resumen
               </button>
               <button
                 onClick={() => handleDeleteItem(item.id)}

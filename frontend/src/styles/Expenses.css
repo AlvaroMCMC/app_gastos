@@ -59,20 +59,6 @@
   white-space: nowrap;
 }
 
-.btn-recategorize {
-  background: #e0e7ff;
-  color: #3730a3;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 10px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.btn-recategorize:hover {
-  background: #c7d2fe;
-}
-
 .btn-manual-category {
   background: #d1fae5;
   color: #065f46;
@@ -400,44 +386,6 @@
   padding: 12px 24px;
   white-space: nowrap;
   width: auto;
-}
-
-.quick-expense-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 30px;
-  padding: 20px;
-  background: #f9f9f9;
-  border-radius: 12px;
-  border: 1px solid #e0e0e0;
-}
-
-.btn-quick {
-  padding: 10px 20px;
-  background-color: white;
-  color: #555;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-quick:hover {
-  background-color: #667eea;
-  color: white;
-  border-color: #667eea;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
-}
-
-.btn-quick:active {
-  transform: translateY(0);
 }
 
 .empty-state {
@@ -929,19 +877,6 @@
     width: 100%;
   }
 
-  /* Quick expense buttons */
-  .quick-expense-buttons {
-    padding: 15px;
-    gap: 8px;
-  }
-
-  .btn-quick {
-    flex: 1 1 calc(50% - 4px);
-    min-width: 140px;
-    font-size: 13px;
-    padding: 10px 15px;
-  }
-
   /* Expenses list - 1 column on mobile */
   .expenses-list {
     grid-template-columns: 1fr;
@@ -1027,11 +962,6 @@
     font-size: 24px;
   }
 
-  .btn-quick {
-    flex: 1 1 100%;
-    min-width: 100%;
-  }
-
   .summary-card h3 {
     font-size: 12px;
   }
@@ -1073,13 +1003,6 @@
   background: #f0f0f0;
 }
 
-.no-templates-message {
-  color: #999;
-  font-size: 14px;
-  text-align: center;
-  padding: 20px;
-}
-
 /* Modal de configuración */
 .template-config-modal {
   max-width: 600px;
@@ -1087,11 +1010,6 @@
   overflow-y: auto;
 }
 
-.template-subtitle {
-  color: #666;
-  font-size: 14px;
-  margin-bottom: 20px;
-}
 
 .template-list {
   display: flex;
