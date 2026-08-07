@@ -120,24 +120,6 @@
   margin-top: 5px;
 }
 
-.my-capital-badge {
-  border: 1px solid #ddd;
-  border-radius: 20px;
-  padding: 6px 14px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 0.85em;
-  font-weight: 600;
-}
-
-.capital-positive {
-  color: #2e7d32;
-}
-
-.capital-negative {
-  color: #c62828;
-}
-
 .btn-manage-participants {
   padding: 8px 16px;
   background-color: #667eea;
@@ -251,49 +233,19 @@
   margin: 0;
 }
 
-.btn-edit-budget {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.3);
-  color: white;
-  border: 2px solid white;
-  cursor: pointer;
-  font-size: 20px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s;
-  padding: 0;
-  line-height: 1;
-}
-
-.btn-edit-budget:hover {
-  background-color: rgba(255, 255, 255, 0.5);
-  transform: scale(1.1);
-}
-
-.budget-remaining {
+.btn-link-budget {
+  display: block;
   margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 13px;
 }
 
-.remaining-label {
-  font-size: 14px;
-  opacity: 0.9;
-}
-
-.remaining-amount {
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.remaining-amount.negative {
+.total-amount.negative {
   color: #ffeb3b;
 }
 
@@ -1385,18 +1337,6 @@
 }
 
 /* ── Presupuesto multi-moneda ── */
-.budget-row {
-  margin-bottom: 8px;
-}
-
-.budget-row:last-child {
-  margin-bottom: 0;
-}
-
-.budget-row .total-amount {
-  margin: 0 0 4px;
-}
-
 .budget-empty {
   opacity: 0.6;
   font-size: 14px;

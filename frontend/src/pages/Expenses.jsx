@@ -11,8 +11,6 @@ import {
   getItemParticipants,
   addItemParticipant,
   removeItemParticipant,
-  getUserBudget,
-  updateUserBudget,
   getExpenseTemplates,
   createExpenseTemplate,
   updateExpenseTemplate,
@@ -164,12 +162,7 @@ function Expenses() {
   const [participants, setParticipants] = useState([]);
   const [newParticipantEmail, setNewParticipantEmail] = useState('');
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
-  const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showSelectParticipantsModal, setShowSelectParticipantsModal] = useState(false);
-  const [userBudget, setUserBudget] = useState(null);
-  const [budgetSoles, setBudgetSoles] = useState('');
-  const [budgetDolares, setBudgetDolares] = useState('');
-  const [budgetReales, setBudgetReales] = useState('');
   const [activeFilter, setActiveFilter] = useState('todos');
   const [expenseTemplates, setExpenseTemplates] = useState([]);
   const [showTemplateConfig, setShowTemplateConfig] = useState(false);
@@ -289,15 +282,13 @@ function Expenses() {
 
   const fetchItemAndExpenses = async () => {
     try {
-      const [itemResponse, expensesResponse, budgetResponse, templatesResponse] = await Promise.all([
+      const [itemResponse, expensesResponse, templatesResponse] = await Promise.all([
         getItem(itemId),
         getExpenses(itemId),
-        getUserBudget(itemId),
         getExpenseTemplates()
       ]);
       setItem(itemResponse.data);
       setExpenses(sortExpensesNewestFirst(expensesResponse.data));
-      setUserBudget(budgetResponse.data);
       setExpenseTemplates(templatesResponse.data);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -363,41 +354,6 @@ function Expenses() {
       console.error('Error removing participant:', error);
       alert('Error al eliminar participante');
     }
-  };
-
-  const handleOpenBudgetModal = () => {
-    setBudgetSoles(userBudget?.budget_soles || '');
-    setBudgetDolares(userBudget?.budget_dolares || '');
-    setBudgetReales(userBudget?.budget_reales || '');
-    setShowBudgetModal(true);
-  };
-
-  const handleSaveBudget = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await updateUserBudget(
-        itemId,
-        parseFloat(budgetSoles) || 0,
-        parseFloat(budgetDolares) || 0,
-        parseFloat(budgetReales) || 0,
-      );
-      setUserBudget(response.data);
-      setShowBudgetModal(false);
-    } catch (error) {
-      console.error('Error saving budget:', error);
-      alert('Error al guardar el presupuesto');
-    }
-  };
-
-  const calculateRemaining = () => {
-    if (!userBudget) return {};
-    const totals = calculateTotalsByCurrency();
-    const result = {};
-    for (const curr of ['soles', 'dolares', 'reales']) {
-      const b = userBudget[`budget_${curr}`] || 0;
-      if (b > 0) result[curr] = b - (totals[curr] || 0);
-    }
-    return result;
   };
 
   const handleOpenModal = (expense = null, quickDescription = null) => {
@@ -1162,20 +1118,6 @@ function Expenses() {
           <span className={`badge badge-${item.item_type}`}>
             {item.item_type === 'personal' ? 'Personal' : 'Compartido'}
           </span>
-          {myCapital && Object.keys(myCapital).length > 0 && (
-            <button
-              onClick={() => navigate('/capital')}
-              className="my-capital-badge"
-              title="Ver Mi Presupuesto"
-            >
-              💰{' '}
-              {Object.entries(myCapital).map(([curr, amount], idx) => (
-                <span key={curr} className={amount < 0 ? 'capital-negative' : 'capital-positive'}>
-                  {idx > 0 ? ' / ' : ''}{getCurrencySymbol(curr)}{amount.toFixed(2)}
-                </span>
-              ))}
-            </button>
-          )}
           {item.item_type === 'shared' && (
             <>
               <button onClick={() => setShowParticipantsModal(true)} className="btn-manage-participants" title="Gestionar participantes">
@@ -1210,33 +1152,20 @@ function Expenses() {
 
         <div className="summary-card budget-card">
           <div className="budget-header">
-            <h3>Presupuesto</h3>
-            <button onClick={handleOpenBudgetModal} className="btn-edit-budget" title="Editar presupuesto">
-              +
-            </button>
+            <h3>Mi Presupuesto</h3>
           </div>
-          {['soles', 'dolares', 'reales'].filter(c => (userBudget?.[`budget_${c}`] || 0) > 0).length === 0 ? (
-            <p className="budget-empty">Sin presupuesto</p>
+          {!myCapital || Object.keys(myCapital).length === 0 ? (
+            <p className="budget-empty">Sin datos aún</p>
           ) : (
-            ['soles', 'dolares', 'reales']
-              .filter(c => (userBudget?.[`budget_${c}`] || 0) > 0)
-              .map(curr => {
-                const remaining = calculateRemaining()[curr];
-                return (
-                  <div key={curr} className="budget-row">
-                    <p className="total-amount">
-                      {getCurrencySymbol(curr)}{(userBudget[`budget_${curr}`]).toFixed(2)}
-                    </p>
-                    <div className="budget-remaining">
-                      <span className="remaining-label">Queda:</span>
-                      <span className={`remaining-amount ${remaining < 0 ? 'negative' : ''}`}>
-                        {getCurrencySymbol(curr)}{remaining.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
+            Object.entries(myCapital).map(([curr, amount]) => (
+              <p key={curr} className={`total-amount ${amount < 0 ? 'negative' : ''}`}>
+                {getCurrencySymbol(curr)}{amount.toFixed(2)}
+              </p>
+            ))
           )}
+          <button onClick={() => navigate('/capital')} className="btn-link-budget">
+            Ver / editar en Mi Presupuesto →
+          </button>
         </div>
 
         {item?.item_type === 'shared' && expenses.length > 0 && (
@@ -1738,61 +1667,6 @@ function Expenses() {
         </div>
       )}
 
-      {showBudgetModal && (
-        <div className="modal-overlay" onClick={() => setShowBudgetModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Establecer Presupuesto</h2>
-            <p className="modal-description">Deja en 0 las monedas que no quieras presupuestar.</p>
-            <form onSubmit={handleSaveBudget}>
-              <div className="form-group">
-                <label>Soles (S/)</label>
-                <input
-                  type="number"
-                  value={budgetSoles}
-                  onChange={(e) => setBudgetSoles(e.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-              <div className="form-group">
-                <label>Dólares ($)</label>
-                <input
-                  type="number"
-                  value={budgetDolares}
-                  onChange={(e) => setBudgetDolares(e.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-              <div className="form-group">
-                <label>Reales (R$)</label>
-                <input
-                  type="number"
-                  value={budgetReales}
-                  onChange={(e) => setBudgetReales(e.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  onClick={() => setShowBudgetModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-primary">
-                  Guardar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {showSelectParticipantsModal && (
         <div className="modal-overlay" onClick={() => setShowSelectParticipantsModal(false)}>
