@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   getItem,
@@ -164,6 +164,7 @@ function Expenses() {
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [showSelectParticipantsModal, setShowSelectParticipantsModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState('todos');
+  const [searchQuery, setSearchQuery] = useState('');
   const [expenseTemplates, setExpenseTemplates] = useState([]);
   const [showTemplateConfig, setShowTemplateConfig] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -561,9 +562,18 @@ function Expenses() {
   };
 
   const activeExpenses = expenses.filter(e => !e.is_settled);
-  const filteredExpenses = activeFilter === 'cuotas'
-    ? expenses.filter(e => e.is_installment)
-    : expenses;
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredExpenses = useMemo(() => {
+    let result = activeFilter === 'cuotas'
+      ? expenses.filter(e => e.is_installment)
+      : expenses;
+
+    if (normalizedSearch) {
+      result = result.filter(e => e.description?.toLowerCase().includes(normalizedSearch));
+    }
+
+    return result;
+  }, [expenses, activeFilter, normalizedSearch]);
 
   const calculateTotalsByCurrency = () => {
     const totals = {};
@@ -1085,6 +1095,8 @@ function Expenses() {
     return <div className="loading">Cargando...</div>;
   }
 
+  const balances = calculateBalances();
+
   return (
     <div className="expenses-container">
       <OfflineIndicator />
@@ -1172,10 +1184,10 @@ function Expenses() {
           <>
             <div className="summary-card balance-owed-to-you">
               <h3>💰 Te deben</h3>
-              {calculateBalances().owedToYouDetails.length > 0 ? (
+              {balances.owedToYouDetails.length > 0 ? (
                 participants.length > 2 ? (
                   <div className="balance-details">
-                    {calculateBalances().owedToYouDetails.map((detail, index) => (
+                    {balances.owedToYouDetails.map((detail, index) => (
                       <div key={index} className="balance-item">
                         <span className="balance-person">{detail.userName}</span>
                         <span className="balance-amount-small">
@@ -1184,13 +1196,13 @@ function Expenses() {
                       </div>
                     ))}
                     <div className="balance-total">
-                      Total: {Object.entries(calculateBalances().owedToYou).map(([currency, amount]) => (
+                      Total: {Object.entries(balances.owedToYou).map(([currency, amount]) => (
                         <span key={currency}>{getCurrencySymbol(currency)}{amount.toFixed(2)} </span>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  Object.entries(calculateBalances().owedToYou).map(([currency, amount]) => (
+                  Object.entries(balances.owedToYou).map(([currency, amount]) => (
                     <p key={currency} className="total-amount">
                       {getCurrencySymbol(currency)}{amount.toFixed(2)}
                     </p>
@@ -1202,10 +1214,10 @@ function Expenses() {
             </div>
             <div className="summary-card balance-you-owe">
               <h3>💳 Debes</h3>
-              {calculateBalances().youOweDetails.length > 0 ? (
+              {balances.youOweDetails.length > 0 ? (
                 participants.length > 2 ? (
                   <div className="balance-details">
-                    {calculateBalances().youOweDetails.map((detail, index) => (
+                    {balances.youOweDetails.map((detail, index) => (
                       <div key={index} className="balance-item">
                         <span className="balance-person">{detail.userName}</span>
                         <span className="balance-amount-small">
@@ -1214,13 +1226,13 @@ function Expenses() {
                       </div>
                     ))}
                     <div className="balance-total">
-                      Total: {Object.entries(calculateBalances().youOwe).map(([currency, amount]) => (
+                      Total: {Object.entries(balances.youOwe).map(([currency, amount]) => (
                         <span key={currency}>{getCurrencySymbol(currency)}{amount.toFixed(2)} </span>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  Object.entries(calculateBalances().youOwe).map(([currency, amount]) => (
+                  Object.entries(balances.youOwe).map(([currency, amount]) => (
                     <p key={currency} className="total-amount">
                       {getCurrencySymbol(currency)}{amount.toFixed(2)}
                     </p>
@@ -1284,6 +1296,13 @@ function Expenses() {
         >
           Cuotas
         </button>
+        <input
+          type="text"
+          className="search-input"
+          placeholder="🔍 Buscar por descripción..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
       </div>
 
       {expenses.length === 0 && pendingExpenses.length === 0 ? (
@@ -1319,7 +1338,11 @@ function Expenses() {
           {/* Gastos normales (sincronizados) */}
           {filteredExpenses.length === 0 && expenses.length > 0 && (
             <div className="empty-filter-state">
-              <p>No hay cuotas en este item</p>
+              <p>
+                {normalizedSearch
+                  ? `No hay gastos que coincidan con "${searchQuery}"`
+                  : 'No hay cuotas en este item'}
+              </p>
             </div>
           )}
           {filteredExpenses.map((expense) => {

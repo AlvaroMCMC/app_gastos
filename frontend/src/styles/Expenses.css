@@ -1302,8 +1302,24 @@
 /* ── Filtro de gastos ── */
 .filter-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 0 16px 12px;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 160px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #ccc;
+  font-size: 13px;
+  color: #333;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
 }
 
 .filter-btn {
