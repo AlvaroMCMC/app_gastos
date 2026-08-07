@@ -114,6 +114,9 @@ function Items() {
         <h1>Mis Items</h1>
         <div className="header-actions">
           <span>Hola, {user?.name || user?.email}</span>
+          <button onClick={() => navigate('/capital')} className="btn-secondary">
+            💰 Mi Presupuesto
+          </button>
           <button onClick={logout} className="btn-secondary">
             Cerrar Sesión
           </button>

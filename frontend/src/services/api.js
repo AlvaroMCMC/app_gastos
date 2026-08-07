@@ -159,6 +159,23 @@ export const deleteCategory = (categoryId) => {
   return api.delete(`/categories/${categoryId}`);
 };
 
+// Personal Capital
+export const getCapital = () => {
+  return api.get('/capital');
+};
+
+export const createIncome = (data) => {
+  return api.post('/capital/incomes', data);
+};
+
+export const updateIncome = (incomeId, data) => {
+  return api.put(`/capital/incomes/${incomeId}`, data);
+};
+
+export const deleteIncome = (incomeId) => {
+  return api.delete(`/capital/incomes/${incomeId}`);
+};
+
 // Item Summary (AI)
 export const getItemSummary = (itemId) => {
   return api.get(`/items/${itemId}/summary`);

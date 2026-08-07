@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Items from './pages/Items';
 import Expenses from './pages/Expenses';
 import Summary from './pages/Summary';
+import Capital from './pages/Capital';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -60,6 +61,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Summary />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/capital"
+        element={
+          <ProtectedRoute>
+            <Capital />
           </ProtectedRoute>
         }
       />

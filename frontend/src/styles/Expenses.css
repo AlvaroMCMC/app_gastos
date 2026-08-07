@@ -120,6 +120,24 @@
   margin-top: 5px;
 }
 
+.my-capital-badge {
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 6px 14px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.capital-positive {
+  color: #2e7d32;
+}
+
+.capital-negative {
+  color: #c62828;
+}
+
 .btn-manage-participants {
   padding: 8px 16px;
   background-color: #667eea;

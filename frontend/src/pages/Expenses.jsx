@@ -23,7 +23,8 @@ import {
   getCategories,
   createCategory,
   updateCategory,
-  deleteCategory
+  deleteCategory,
+  getCapital
 } from '../services/api';
 import { savePendingExpense, getPendingExpensesByItem } from '../utils/offlineDB';
 import { useOffline } from '../context/OfflineContext';
@@ -177,6 +178,7 @@ function Expenses() {
   const [selectedManualCategory, setSelectedManualCategory] = useState('');
   const [categories, setCategories] = useState([]);
   const [showCategoryConfig, setShowCategoryConfig] = useState(false);
+  const [myCapital, setMyCapital] = useState(null);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   const { isOnline, updatePendingCount } = useOffline();
@@ -233,6 +235,7 @@ function Expenses() {
     fetchUsersAndCurrentUser();
     fetchPendingExpenses();
     fetchCategories();
+    fetchMyCapital();
   }, [itemId]);
 
   // Update clock every minute
@@ -259,6 +262,15 @@ function Expenses() {
       setCategories(response.data || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchMyCapital = async () => {
+    try {
+      const response = await getCapital();
+      setMyCapital(response.data.by_currency || {});
+    } catch (error) {
+      console.error('Error fetching capital:', error);
     }
   };
 
@@ -1150,6 +1162,20 @@ function Expenses() {
           <span className={`badge badge-${item.item_type}`}>
             {item.item_type === 'personal' ? 'Personal' : 'Compartido'}
           </span>
+          {myCapital && Object.keys(myCapital).length > 0 && (
+            <button
+              onClick={() => navigate('/capital')}
+              className="my-capital-badge"
+              title="Ver Mi Presupuesto"
+            >
+              💰{' '}
+              {Object.entries(myCapital).map(([curr, amount], idx) => (
+                <span key={curr} className={amount < 0 ? 'capital-negative' : 'capital-positive'}>
+                  {idx > 0 ? ' / ' : ''}{getCurrencySymbol(curr)}{amount.toFixed(2)}
+                </span>
+              ))}
+            </button>
+          )}
           {item.item_type === 'shared' && (
             <>
               <button onClick={() => setShowParticipantsModal(true)} className="btn-manage-participants" title="Gestionar participantes">

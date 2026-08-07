@@ -1,0 +1,162 @@
+.capital-page {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.capital-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.capital-header h1 {
+  margin: 0;
+}
+
+.capital-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.capital-card {
+  flex: 1;
+  min-width: 160px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.capital-card h3 {
+  margin: 0 0 8px;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.capital-amount {
+  font-size: 1.8em;
+  font-weight: 700;
+  margin: 0;
+}
+
+.capital-card.positive .capital-amount {
+  color: #2e7d32;
+}
+
+.capital-card.negative .capital-amount {
+  color: #c62828;
+}
+
+.capital-empty {
+  color: #888;
+  text-align: center;
+  padding: 20px;
+}
+
+.income-form-card,
+.income-list-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.income-form-card h2,
+.income-list-card h2 {
+  margin-top: 0;
+  font-size: 1.1em;
+}
+
+.toggle-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.toggle-btn.active {
+  border-color: #667eea;
+  background: #667eea;
+  color: #fff;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.income-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.income-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  flex-wrap: wrap;
+}
+
+.income-item.income-cancelled {
+  opacity: 0.6;
+}
+
+.income-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.income-amount {
+  font-weight: 700;
+}
+
+.income-description {
+  color: #555;
+}
+
+.income-day {
+  font-size: 0.85em;
+  color: #888;
+}
+
+.income-input {
+  padding: 8px 10px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.income-amount-input {
+  width: 90px;
+}
+
+.income-day-input {
+  width: 60px;
+}

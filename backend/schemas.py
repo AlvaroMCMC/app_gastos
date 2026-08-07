@@ -202,3 +202,42 @@ class ItemSummaryResponse(BaseModel):
     ai_model: Optional[str] = None
     expenses_processed: int
     categories_by_currency: Dict[str, List[ItemSummaryCategoryStat]]
+
+
+# Personal Capital Schemas
+class UserIncomeCreate(BaseModel):
+    income_type: str  # "periodic" o "one_time"
+    amount: float
+    currency: str = "soles"
+    description: Optional[str] = None
+    date: Optional[str] = None
+    day_of_month: Optional[int] = None  # requerido si income_type == "periodic"
+
+class UserIncomeUpdate(BaseModel):
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    description: Optional[str] = None
+    day_of_month: Optional[int] = None
+    end_date: Optional[str] = None  # setear para "cancelar" un ingreso periódico
+
+class UserIncomeResponse(BaseModel):
+    id: str
+    user_id: str
+    income_type: str
+    amount: float
+    currency: str
+    description: Optional[str] = None
+    date: datetime
+    day_of_month: Optional[int] = None
+    end_date: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.strftime('%Y-%m-%dT%H:%M:%S') if v else None
+        }
+
+class CapitalResponse(BaseModel):
+    by_currency: Dict[str, float]
+    incomes: List[UserIncomeResponse]

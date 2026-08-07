@@ -108,6 +108,20 @@ class ExpenseTemplate(Base):
     # Relación con usuario
     user = relationship("User", back_populates="expense_templates")
 
+class UserIncome(Base):
+    __tablename__ = "user_incomes"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    income_type = Column(String, nullable=False)  # "periodic" o "one_time"
+    amount = Column(Float, nullable=False)
+    currency = Column(String, nullable=False, default="soles")
+    description = Column(String, nullable=True)
+    date = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    day_of_month = Column(Integer, nullable=True)  # solo periodic
+    end_date = Column(DateTime, nullable=True)  # solo periodic; null = sigue activo
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 class UserItemBudget(Base):
     __tablename__ = "user_item_budgets"
 

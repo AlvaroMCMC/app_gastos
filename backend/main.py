@@ -2,7 +2,8 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, text
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
+import calendar
 from typing import List, Dict
 import os
 import json
@@ -11,7 +12,7 @@ import urllib.request
 import urllib.error
 
 from database import engine, get_db, Base, DATABASE_URL, SessionLocal
-from models import User, Item, Expense, PendingInvitation, ExpenseTemplate, UserItemBudget, ItemSummary, Category
+from models import User, Item, Expense, PendingInvitation, ExpenseTemplate, UserItemBudget, ItemSummary, Category, UserIncome
 from schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     ItemCreate, ItemUpdate, ItemResponse,
@@ -19,7 +20,8 @@ from schemas import (
     ItemParticipantAdd, ExpenseTemplateCreate, ExpenseTemplateUpdate, ExpenseTemplateResponse,
     UserItemBudgetUpdate, UserItemBudgetResponse,
     ItemSummaryResponse,
-    CategoryCreate, CategoryUpdate, CategoryResponse
+    CategoryCreate, CategoryUpdate, CategoryResponse,
+    UserIncomeCreate, UserIncomeUpdate, UserIncomeResponse, CapitalResponse
 )
 from auth import (
     get_password_hash, verify_password, create_access_token,
@@ -222,6 +224,84 @@ def ensure_item_access(item_id: str, current_user: User, db: Session) -> Item:
     if item.owner_id != current_user.id and current_user not in item.participants:
         raise HTTPException(status_code=403, detail="Not authorized to access this item")
     return item
+
+# ============= PERSONAL CAPITAL =============
+
+def count_periodic_occurrences(start: date, day_of_month: int, until: date, end: date = None) -> int:
+    """Cuenta cuántas veces ocurrió `day_of_month` entre `start` y `until` (inclusive),
+    cortando en `end` si se dio (ingreso periódico cancelado)."""
+    effective_until = min(until, end) if end else until
+    if start > effective_until:
+        return 0
+
+    count = 0
+    year, month = start.year, start.month
+    while (year, month) <= (effective_until.year, effective_until.month):
+        last_day = calendar.monthrange(year, month)[1]
+        occurrence_day = min(day_of_month, last_day)
+        occurrence_date = date(year, month, occurrence_day)
+        if start <= occurrence_date <= effective_until:
+            count += 1
+        if month == 12:
+            year, month = year + 1, 1
+        else:
+            month += 1
+    return count
+
+def calculate_user_expense_share(expense: Expense, user_id: str, item: Item, participant_count: int) -> float:
+    """Cuánto de este gasto le corresponde realmente a `user_id`, sin importar quién pagó.
+    Mismo criterio que calculateTotalsByCurrency (frontend/src/pages/Expenses.jsx:609-635)."""
+    if item.item_type == "personal":
+        return expense.amount if item.owner_id == user_id else 0.0
+
+    if expense.split_type == "assigned":
+        return expense.amount if expense.assigned_to == user_id else 0.0
+    elif expense.split_type == "divided":
+        if participant_count <= 0:
+            return 0.0
+        return expense.amount / participant_count
+    elif expense.split_type == "selected":
+        selected_ids = expense.selected_participants.split(",") if expense.selected_participants else []
+        if user_id in selected_ids and len(selected_ids) > 0:
+            return expense.amount / len(selected_ids)
+        return 0.0
+    return 0.0
+
+def get_user_capital(user_id: str, db: Session) -> Dict[str, float]:
+    by_currency: Dict[str, float] = {}
+    today = datetime.utcnow().date()
+
+    incomes = db.query(UserIncome).filter(UserIncome.user_id == user_id).all()
+    for income in incomes:
+        by_currency.setdefault(income.currency, 0.0)
+        if income.income_type == "periodic" and income.day_of_month:
+            occurrences = count_periodic_occurrences(
+                income.date.date(), income.day_of_month, today,
+                income.end_date.date() if income.end_date else None
+            )
+            by_currency[income.currency] += income.amount * occurrences
+        else:
+            by_currency[income.currency] += income.amount
+
+    items = db.query(Item).filter(
+        or_(
+            Item.owner_id == user_id,
+            Item.participants.any(User.id == user_id)
+        )
+    ).all()
+
+    for item in items:
+        participant_count = 1 + len({p.id for p in item.participants})
+        pending_count = db.query(PendingInvitation).filter(PendingInvitation.item_id == item.id).count()
+        participant_count += pending_count
+
+        for expense in item.expenses:
+            share = calculate_user_expense_share(expense, user_id, item, participant_count)
+            if share:
+                by_currency.setdefault(expense.currency, 0.0)
+                by_currency[expense.currency] -= share
+
+    return {currency: round(amount, 2) for currency, amount in by_currency.items()}
 
 def build_summary_payload(expenses: List[Expense], db: Session) -> Dict[str, List[Dict[str, float]]]:
     grouped: Dict[str, Dict[str, Dict[str, float]]] = {}
@@ -1351,6 +1431,106 @@ def generate_item_summary(
         "expenses_processed": summary.expenses_processed,
         "categories_by_currency": json.loads(summary.categories_json)
     }
+
+# ============================================
+# PERSONAL CAPITAL
+# ============================================
+
+@app.get("/api/capital", response_model=CapitalResponse)
+def get_capital(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    by_currency = get_user_capital(current_user.id, db)
+    incomes = db.query(UserIncome).filter(
+        UserIncome.user_id == current_user.id
+    ).order_by(UserIncome.created_at.desc()).all()
+    return {"by_currency": by_currency, "incomes": incomes}
+
+@app.post("/api/capital/incomes", response_model=UserIncomeResponse, status_code=status.HTTP_201_CREATED)
+def create_income(
+    income: UserIncomeCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if income.income_type not in ("periodic", "one_time"):
+        raise HTTPException(status_code=400, detail="income_type debe ser 'periodic' u 'one_time'")
+
+    if income.income_type == "periodic":
+        if not income.day_of_month or not (1 <= income.day_of_month <= 31):
+            raise HTTPException(status_code=400, detail="day_of_month es requerido (1-31) para ingresos periódicos")
+
+    income_date = datetime.utcnow()
+    if income.date:
+        try:
+            income_date = datetime.fromisoformat(income.date.replace('Z', '+00:00'))
+        except ValueError:
+            pass
+
+    new_income = UserIncome(
+        user_id=current_user.id,
+        income_type=income.income_type,
+        amount=income.amount,
+        currency=income.currency,
+        description=income.description,
+        date=income_date,
+        day_of_month=income.day_of_month if income.income_type == "periodic" else None
+    )
+    db.add(new_income)
+    db.commit()
+    db.refresh(new_income)
+    return new_income
+
+@app.put("/api/capital/incomes/{income_id}", response_model=UserIncomeResponse)
+def update_income(
+    income_id: str,
+    income_update: UserIncomeUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_income = db.query(UserIncome).filter(
+        UserIncome.id == income_id,
+        UserIncome.user_id == current_user.id
+    ).first()
+    if not db_income:
+        raise HTTPException(status_code=404, detail="Income not found")
+
+    if income_update.amount is not None:
+        db_income.amount = income_update.amount
+    if income_update.currency is not None:
+        db_income.currency = income_update.currency
+    if income_update.description is not None:
+        db_income.description = income_update.description
+    if income_update.day_of_month is not None:
+        if not (1 <= income_update.day_of_month <= 31):
+            raise HTTPException(status_code=400, detail="day_of_month debe estar entre 1 y 31")
+        db_income.day_of_month = income_update.day_of_month
+    if income_update.end_date is not None:
+        try:
+            db_income.end_date = datetime.fromisoformat(income_update.end_date.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="end_date inválida")
+
+    db.commit()
+    db.refresh(db_income)
+    return db_income
+
+@app.delete("/api/capital/incomes/{income_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_income(
+    income_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_income = db.query(UserIncome).filter(
+        UserIncome.id == income_id,
+        UserIncome.user_id == current_user.id
+    ).first()
+    if not db_income:
+        raise HTTPException(status_code=404, detail="Income not found")
+
+    db.delete(db_income)
+    db.commit()
+    return None
 
 # ============================================
 # EXPENSE TEMPLATES
