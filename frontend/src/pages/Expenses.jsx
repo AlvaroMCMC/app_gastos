@@ -6,12 +6,10 @@ import {
   createExpense,
   updateExpense,
   deleteExpense,
-  getUsers,
   getMe,
   getItemParticipants,
   addItemParticipant,
   removeItemParticipant,
-  updateItem,
   getUserBudget,
   updateUserBudget,
   getExpenseTemplates,
@@ -92,7 +90,6 @@ function Expenses() {
   const [showModal, setShowModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [newParticipantEmail, setNewParticipantEmail] = useState('');
@@ -233,11 +230,7 @@ function Expenses() {
 
   const fetchUsersAndCurrentUser = async () => {
     try {
-      const [usersResponse, currentUserResponse] = await Promise.all([
-        getUsers(),
-        getMe()
-      ]);
-      setUsers(usersResponse.data);
+      const currentUserResponse = await getMe();
       setCurrentUser(currentUserResponse.data);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -998,7 +991,7 @@ function Expenses() {
       setExpenseTemplates(expenseTemplates.map(t =>
         t.id === templateId ? response.data : t
       ));
-    } catch (error) {
+    } catch {
       alert("Error al actualizar plantilla");
     }
   };
@@ -1009,7 +1002,7 @@ function Expenses() {
     try {
       await deleteExpenseTemplate(templateId);
       setExpenseTemplates(expenseTemplates.filter(t => t.id !== templateId));
-    } catch (error) {
+    } catch {
       alert("Error al eliminar plantilla");
     }
   };
@@ -1044,7 +1037,7 @@ function Expenses() {
               <div className="participants-emails">
                 {participants
                   .filter(p => p.id !== currentUser?.id)
-                  .map((participant, index) => (
+                  .map((participant) => (
                     <span key={participant.id} className="participant-email-badge">
                       {participant.email}
                     </span>
@@ -1600,7 +1593,7 @@ function Expenses() {
             )}
 
             <p className="participant-note">
-              💡 <strong>Nota:</strong> Puedes agregar cualquier email. Si el usuario no está registrado, aparecerá como "Pendiente" y podrá ver el item cuando se registre con ese email.
+              💡 <strong>Nota:</strong> Puedes agregar cualquier email. Si el usuario no está registrado, aparecerá como &quot;Pendiente&quot; y podrá ver el item cuando se registre con ese email.
             </p>
 
             <div className="modal-actions">

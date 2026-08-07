@@ -169,7 +169,7 @@ function Items() {
               <div className="item-participants">
                 {itemsParticipants[item.id]
                   .filter(p => !p.is_pending && p.id !== currentUser?.id)
-                  .map((participant, index) => (
+                  .map((participant) => (
                     <span key={participant.id} className="participant-badge">
                       {participant.email}
                     </span>
@@ -177,7 +177,7 @@ function Items() {
                 }
                 {itemsParticipants[item.id]
                   .filter(p => p.is_pending)
-                  .map((participant, index) => (
+                  .map((participant) => (
                     <span key={participant.id} className="participant-badge pending">
                       {participant.email} (Pendiente)
                     </span>

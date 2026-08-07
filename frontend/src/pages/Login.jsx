@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { version as appVersion } from '../../package.json';
 import '../styles/Login.css';
 
 function Login() {
@@ -86,6 +87,8 @@ function Login() {
             {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
           </button>
         </div>
+
+        <p className="app-version">v{appVersion}</p>
       </div>
     </div>
   );

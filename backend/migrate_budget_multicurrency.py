@@ -3,7 +3,8 @@ Migración: presupuesto multi-moneda
 Convierte user_item_budgets de (budget + currency) → (budget_soles + budget_dolares + budget_reales)
 Ejecutar UNA sola vez antes de desplegar el nuevo código.
 """
-import os, sys
+import os
+import sys
 from sqlalchemy import create_engine, text
 
 DATABASE_URL = os.environ.get("DATABASE_URL")

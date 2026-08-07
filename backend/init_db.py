@@ -1,5 +1,4 @@
 from database import engine, Base
-from models import User, Item, Expense, PendingInvitation
 import sys
 
 def init_database():

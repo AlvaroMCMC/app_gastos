@@ -70,7 +70,7 @@ function Summary() {
         const itemResponse = await getItem(itemId);
         setItem(itemResponse.data);
         await fetchSummary();
-      } catch (err) {
+      } catch {
         alert('Error al cargar el resumen del item');
         navigate('/items');
       } finally {

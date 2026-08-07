@@ -15,8 +15,7 @@ from schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     ItemCreate, ItemUpdate, ItemResponse,
     ExpenseCreate, ExpenseUpdate, ExpenseResponse, ExpenseCategoryUpdate,
-    ItemParticipantAdd, ItemParticipantResponse,
-    ExpenseTemplateCreate, ExpenseTemplateUpdate, ExpenseTemplateResponse,
+    ItemParticipantAdd, ExpenseTemplateCreate, ExpenseTemplateUpdate, ExpenseTemplateResponse,
     UserItemBudgetUpdate, UserItemBudgetResponse,
     ItemSummaryResponse
 )
@@ -757,11 +756,11 @@ def create_expense(
         try:
             # Handle both ISO format with and without timezone
             expense_date = dt.fromisoformat(expense.date.replace('Z', '+00:00'))
-        except:
+        except ValueError:
             try:
                 # Try parsing without timezone (from datetime-local input)
                 expense_date = dt.strptime(expense.date, '%Y-%m-%dT%H:%M')
-            except:
+            except ValueError:
                 expense_date = dt.now()
 
     # Determinar quién pagó (por defecto el usuario actual)
@@ -905,11 +904,11 @@ def update_expense(
         try:
             # Handle both ISO format with and without timezone
             expense.date = dt.fromisoformat(expense_update.date.replace('Z', '+00:00'))
-        except:
+        except ValueError:
             try:
                 # Try parsing without timezone (from datetime-local input)
                 expense.date = dt.strptime(expense_update.date, '%Y-%m-%dT%H:%M')
-            except:
+            except ValueError:
                 expense.date = dt.now()
     if expense_update.is_installment is not None:
         expense.is_installment = expense_update.is_installment

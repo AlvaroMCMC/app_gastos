@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
       setIsOfflineMode(false);
-    } catch (error) {
+    } catch {
       // 5. Si falla la llamada pero tenemos cache, usar cache
       if (cachedUser) {
         console.warn('Usando datos cacheados debido a error de red');
