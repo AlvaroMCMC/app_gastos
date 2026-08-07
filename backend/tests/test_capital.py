@@ -148,6 +148,37 @@ def test_divided_expense_only_reduces_capital_by_share(client, auth_headers):
     assert partner_capital == -50  # debe su mitad, aunque no pago nada
 
 
+def test_capital_response_shows_owed_to_me_and_i_owe_breakdown(client, auth_headers):
+    owner = auth_headers("owner@test.com")
+    partner = auth_headers("partner@test.com")
+    item_id = client.post("/api/items", json={"name": "Compartido", "item_type": "shared"}, headers=owner).json()["id"]
+    client.post(f"/api/items/{item_id}/participants", json={"email": "partner@test.com"}, headers=owner)
+    client.post(f"/api/items/{item_id}/expenses", json=_expense_payload(amount=100, split_type="divided"), headers=owner)
+
+    owner_capital = client.get("/api/capital", headers=owner).json()
+    partner_capital = client.get("/api/capital", headers=partner).json()
+
+    assert owner_capital["owed_to_me"]["soles"] == 50
+    assert owner_capital["i_owe"] == {}
+    assert partner_capital["i_owe"]["soles"] == 50
+    assert partner_capital["owed_to_me"] == {}
+
+
+def test_settled_expense_does_not_count_as_pending_debt(client, auth_headers):
+    owner = auth_headers("owner@test.com")
+    auth_headers("partner@test.com")
+    item_id = client.post("/api/items", json={"name": "Compartido", "item_type": "shared"}, headers=owner).json()["id"]
+    client.post(f"/api/items/{item_id}/participants", json={"email": "partner@test.com"}, headers=owner)
+    expense_id = client.post(
+        f"/api/items/{item_id}/expenses", json=_expense_payload(amount=100, split_type="divided"), headers=owner
+    ).json()["id"]
+    client.patch(f"/api/items/{item_id}/expenses/{expense_id}/settled", headers=owner)
+
+    owner_capital = client.get("/api/capital", headers=owner).json()
+    assert owner_capital["owed_to_me"] == {}
+    assert owner_capital["by_currency"]["soles"] == -50  # el capital neto no cambia por saldar
+
+
 def test_assigned_expense_only_affects_assigned_user(client, auth_headers):
     owner = auth_headers("owner@test.com")
     partner = auth_headers("partner@test.com")

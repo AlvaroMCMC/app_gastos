@@ -52,6 +52,35 @@
   color: #c62828;
 }
 
+.debts-card {
+  background: #fffbea;
+  border: 1px solid #f0e0a0;
+  border-radius: 12px;
+  padding: 14px 20px;
+  margin-bottom: 24px;
+}
+
+.debts-hint {
+  margin: 0 0 8px;
+  font-size: 0.8em;
+  color: #888;
+}
+
+.debts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-weight: 600;
+}
+
+.debt-owed {
+  color: #2e7d32;
+}
+
+.debt-iowe {
+  color: #c62828;
+}
+
 .capital-empty {
   color: #888;
   text-align: center;

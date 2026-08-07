@@ -269,8 +269,10 @@ def calculate_user_expense_share(expense: Expense, user_id: str, item: Item, par
         return 0.0
     return 0.0
 
-def get_user_capital(user_id: str, db: Session) -> Dict[str, float]:
+def get_user_capital(user_id: str, db: Session) -> Dict[str, Dict[str, float]]:
     by_currency: Dict[str, float] = {}
+    owed_to_me: Dict[str, float] = {}
+    i_owe: Dict[str, float] = {}
     today = datetime.utcnow().date()
 
     incomes = db.query(UserIncome).filter(UserIncome.user_id == user_id).all()
@@ -303,7 +305,21 @@ def get_user_capital(user_id: str, db: Session) -> Dict[str, float]:
                 by_currency.setdefault(expense.currency, 0.0)
                 by_currency[expense.currency] -= share
 
-    return {currency: round(amount, 2) for currency, amount in by_currency.items()}
+            # Deudas pendientes (informativas, ya reflejadas en by_currency vía "share"):
+            # lo que otros me deben cuando yo pagué de más, o lo que debo cuando pagó otro.
+            if item.item_type == "shared" and not expense.is_settled:
+                if expense.paid_by == user_id and share < expense.amount:
+                    owed_to_me.setdefault(expense.currency, 0.0)
+                    owed_to_me[expense.currency] += expense.amount - share
+                elif expense.paid_by != user_id and share > 0:
+                    i_owe.setdefault(expense.currency, 0.0)
+                    i_owe[expense.currency] += share
+
+    return {
+        "by_currency": {c: round(a, 2) for c, a in by_currency.items()},
+        "owed_to_me": {c: round(a, 2) for c, a in owed_to_me.items()},
+        "i_owe": {c: round(a, 2) for c, a in i_owe.items()},
+    }
 
 def build_summary_payload(expenses: List[Expense], db: Session) -> Dict[str, List[Dict[str, float]]]:
     grouped: Dict[str, Dict[str, Dict[str, float]]] = {}
@@ -1443,11 +1459,11 @@ def get_capital(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    by_currency = get_user_capital(current_user.id, db)
+    capital = get_user_capital(current_user.id, db)
     incomes = db.query(UserIncome).filter(
         UserIncome.user_id == current_user.id
     ).order_by(UserIncome.created_at.desc()).all()
-    return {"by_currency": by_currency, "incomes": incomes}
+    return {**capital, "incomes": incomes}
 
 @app.post("/api/capital/incomes", response_model=UserIncomeResponse, status_code=status.HTTP_201_CREATED)
 def create_income(

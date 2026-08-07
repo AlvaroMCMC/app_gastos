@@ -240,4 +240,6 @@ class UserIncomeResponse(BaseModel):
 
 class CapitalResponse(BaseModel):
     by_currency: Dict[str, float]
+    owed_to_me: Dict[str, float] = {}
+    i_owe: Dict[str, float] = {}
     incomes: List[UserIncomeResponse]

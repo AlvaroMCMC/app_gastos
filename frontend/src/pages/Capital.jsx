@@ -94,6 +94,8 @@ const IncomeItem = ({ income, onUpdate, onCancel, onDelete }) => {
 function Capital() {
   const navigate = useNavigate();
   const [byCurrency, setByCurrency] = useState({});
+  const [owedToMe, setOwedToMe] = useState({});
+  const [iOwe, setIOwe] = useState({});
   const [incomes, setIncomes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [incomeType, setIncomeType] = useState('one_time');
@@ -106,6 +108,8 @@ function Capital() {
     try {
       const response = await getCapital();
       setByCurrency(response.data.by_currency || {});
+      setOwedToMe(response.data.owed_to_me || {});
+      setIOwe(response.data.i_owe || {});
       setIncomes(response.data.incomes || []);
     } catch (error) {
       console.error('Error fetching capital:', error);
@@ -193,6 +197,26 @@ function Capital() {
           ))
         )}
       </div>
+
+      {(Object.keys(owedToMe).length > 0 || Object.keys(iOwe).length > 0) && (
+        <div className="debts-card">
+          <p className="debts-hint">
+            Ya incluido en tu presupuesto de arriba — esto es el detalle de por qué:
+          </p>
+          <div className="debts-row">
+            {Object.entries(owedToMe).map(([curr, amount]) => (
+              <span key={`owed-${curr}`} className="debt-owed">
+                💰 Te deben {getCurrencySymbol(curr)}{amount.toFixed(2)}
+              </span>
+            ))}
+            {Object.entries(iOwe).map(([curr, amount]) => (
+              <span key={`iowe-${curr}`} className="debt-iowe">
+                📤 Debes {getCurrencySymbol(curr)}{amount.toFixed(2)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="income-form-card">
         <h2>Agregar Ingreso</h2>
