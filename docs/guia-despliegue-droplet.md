@@ -169,7 +169,7 @@ networks:
 DATABASE_URL=postgresql://user:PASSWORD@host:5432/db?sslmode=require
 SECRET_KEY=genera-clave-aleatoria-larga-aqui
 ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
 ENVIRONMENT=production
 VITE_API_URL=/api
 ```

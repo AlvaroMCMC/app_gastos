@@ -31,7 +31,7 @@ Editar `.env`:
 DATABASE_URL=postgresql://tu_usuario:tu_password@localhost:5432/app_gastos
 SECRET_KEY=tu-clave-secreta-muy-segura
 ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
 ```
 
 ### 4. Ejecutar servidor

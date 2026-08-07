@@ -226,7 +226,7 @@ Si ya tienes PostgreSQL configurado en Easypanel:
 - `DATABASE_URL`: Conexión a PostgreSQL
 - `SECRET_KEY`: Clave secreta para JWT (genera una aleatoria)
 - `ALGORITHM`: HS256 (por defecto)
-- `ACCESS_TOKEN_EXPIRE_MINUTES`: 30 (por defecto)
+- `ACCESS_TOKEN_EXPIRE_MINUTES`: 1440 (por defecto, 24h)
 - `ENVIRONMENT`: production
 
 **Frontend:**
