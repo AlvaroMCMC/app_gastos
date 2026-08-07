@@ -10,6 +10,7 @@ function Items() {
   const [showModal, setShowModal] = useState(false);
   const [newItemName, setNewItemName] = useState('');
   const [newItemType, setNewItemType] = useState('personal');
+  const [newItemIsRecurring, setNewItemIsRecurring] = useState(false);
   const [loading, setLoading] = useState(false);
   const [itemsParticipants, setItemsParticipants] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
@@ -59,9 +60,10 @@ function Items() {
     setLoading(true);
 
     try {
-      await createItem(newItemName, newItemType);
+      await createItem(newItemName, newItemType, newItemIsRecurring);
       setNewItemName('');
       setNewItemType('personal');
+      setNewItemIsRecurring(false);
       setShowModal(false);
       fetchItems();
     } catch (error) {
@@ -127,6 +129,9 @@ function Items() {
                 <span className={`badge badge-${item.item_type}`}>
                   {item.item_type === 'personal' ? 'Personal' : 'Compartido'}
                 </span>
+                {item.is_recurring && (
+                  <span className="badge badge-recurring" title="Item mensual conectado">🔁 Mensual</span>
+                )}
                 {item.is_archived && (
                   <span className="badge badge-archived">Archivado</span>
                 )}
@@ -231,6 +236,20 @@ function Items() {
                   <option value="personal">Personal</option>
                   <option value="shared">Compartido</option>
                 </select>
+              </div>
+
+              <div className="form-group form-group-checkbox">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={newItemIsRecurring}
+                    onChange={(e) => setNewItemIsRecurring(e.target.checked)}
+                  />
+                  Es mensual / recurrente
+                </label>
+                <p className="form-hint">
+                  Habilita &quot;Crear siguiente mes&quot;, que enlaza el próximo item y traslada automáticamente las cuotas pendientes.
+                </p>
               </div>
 
               <div className="modal-actions">

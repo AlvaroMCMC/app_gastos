@@ -29,11 +29,13 @@ class Token(BaseModel):
 class ItemCreate(BaseModel):
     name: str
     item_type: str  # "personal" o "shared"
+    is_recurring: bool = False
 
 class ItemUpdate(BaseModel):
     name: Optional[str] = None
     item_type: Optional[str] = None
     is_archived: Optional[bool] = None
+    is_recurring: Optional[bool] = None
 
 class ItemResponse(BaseModel):
     id: str
@@ -42,6 +44,9 @@ class ItemResponse(BaseModel):
     owner_id: str
     owner_email: Optional[str] = None
     is_archived: bool
+    is_recurring: bool = False
+    previous_item_id: Optional[str] = None
+    next_item_id: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -71,7 +76,6 @@ class ExpenseCreate(BaseModel):
     installment_number: Optional[int] = None
     installment_total: Optional[int] = None
     installment_group_id: Optional[str] = None
-    next_item_id: Optional[str] = None  # request-only: item existente para siguiente cuota
     is_settled: bool = False
 
 class ExpenseUpdate(BaseModel):

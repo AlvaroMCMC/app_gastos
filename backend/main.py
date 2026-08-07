@@ -6,6 +6,7 @@ from datetime import timedelta, datetime
 from typing import List, Dict
 import os
 import json
+import re
 import urllib.request
 import urllib.error
 
@@ -157,6 +158,22 @@ try:
         conn.commit()
 except Exception as e:
     print(f"Migracion expenses: {e}")
+
+# Migración: Agregar columnas de items mensuales conectados
+try:
+    with engine.connect() as conn:
+        new_item_cols = [
+            ("is_recurring",      "BOOLEAN DEFAULT FALSE"),
+            ("previous_item_id",  "VARCHAR"),
+            ("next_item_id",      "VARCHAR"),
+        ]
+        for col_name, col_def in new_item_cols:
+            if not column_exists(conn, 'items', col_name):
+                print(f"Migrando: Agregando columna '{col_name}' a items...")
+                conn.execute(text(f"ALTER TABLE items ADD COLUMN {col_name} {col_def}"))
+        conn.commit()
+except Exception as e:
+    print(f"Migracion items: {e}")
 
 def validate_category(category: str) -> str:
     normalized = (category or "").strip().lower()
@@ -402,6 +419,9 @@ def get_items(
             "owner_id": item.owner_id,
             "owner_email": item.owner.email if item.owner else None,
             "is_archived": item.is_archived,
+            "is_recurring": item.is_recurring,
+            "previous_item_id": item.previous_item_id,
+            "next_item_id": item.next_item_id,
             "created_at": item.created_at
         }
         result.append(item_dict)
@@ -417,7 +437,8 @@ def create_item(
     new_item = Item(
         name=item.name,
         item_type=item.item_type,
-        owner_id=current_user.id
+        owner_id=current_user.id,
+        is_recurring=item.is_recurring
     )
     db.add(new_item)
     db.commit()
@@ -467,10 +488,127 @@ def update_item(
         item.item_type = item_update.item_type
     if item_update.is_archived is not None:
         item.is_archived = item_update.is_archived
+    if item_update.is_recurring is not None:
+        item.is_recurring = item_update.is_recurring
 
     db.commit()
     db.refresh(item)
     return item
+
+SPANISH_MONTHS = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "setiembre", "octubre", "noviembre", "diciembre"
+]
+# Alias de entrada: variantes ortográficas aceptadas al parsear el nombre actual
+MONTH_ALIASES = {"septiembre": "setiembre"}
+
+def next_month_name(name: str) -> str:
+    """Dado un nombre de item tipo 'Agosto 2026 (pareja)', devuelve 'Setiembre 2026 (pareja)'."""
+    match = re.match(r"^(\w+)\s+(\d{4})(.*)$", name.strip(), re.UNICODE)
+    if not match:
+        raise HTTPException(
+            status_code=400,
+            detail="No se pudo determinar el siguiente mes desde el nombre del item"
+        )
+    month_word, year_str, suffix = match.groups()
+    month_key = MONTH_ALIASES.get(month_word.lower(), month_word.lower())
+    if month_key not in SPANISH_MONTHS:
+        raise HTTPException(
+            status_code=400,
+            detail="No se pudo determinar el siguiente mes desde el nombre del item"
+        )
+    month_index = SPANISH_MONTHS.index(month_key)
+    year = int(year_str)
+    next_index = (month_index + 1) % 12
+    next_year = year + 1 if next_index == 0 else year
+    next_month_word = SPANISH_MONTHS[next_index].capitalize()
+    return f"{next_month_word} {next_year}{suffix}"
+
+@app.post("/api/items/{item_id}/next-month", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)
+def create_next_month_item(
+    item_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    if item.owner_id != current_user.id and current_user not in item.participants:
+        raise HTTPException(status_code=403, detail="Not authorized to update this item")
+
+    if not item.is_recurring:
+        raise HTTPException(status_code=400, detail="Este item no es mensual")
+
+    if item.next_item_id:
+        raise HTTPException(status_code=400, detail="Ya existe un siguiente mes para este item")
+
+    new_name = next_month_name(item.name)
+
+    new_item = Item(
+        name=new_name,
+        item_type=item.item_type,
+        owner_id=item.owner_id,
+        is_recurring=True,
+        previous_item_id=item.id
+    )
+    db.add(new_item)
+    db.flush()
+
+    # Copiar participantes registrados
+    for p in item.participants:
+        new_item.participants.append(p)
+
+    # Copiar invitaciones pendientes
+    pending_invitations = db.query(PendingInvitation).filter(
+        PendingInvitation.item_id == item.id
+    ).all()
+    for invitation in pending_invitations:
+        db.add(PendingInvitation(item_id=new_item.id, email=invitation.email))
+
+    # Copiar presupuesto de cada participante
+    budgets = db.query(UserItemBudget).filter(UserItemBudget.item_id == item.id).all()
+    for budget in budgets:
+        db.add(UserItemBudget(
+            user_id=budget.user_id,
+            item_id=new_item.id,
+            budget_soles=budget.budget_soles,
+            budget_dolares=budget.budget_dolares,
+            budget_reales=budget.budget_reales
+        ))
+
+    # Trasladar cuotas pendientes (aun no llegan a su total)
+    pending_installments = db.query(Expense).filter(
+        Expense.item_id == item.id,
+        Expense.is_installment.is_(True),
+        Expense.installment_number.isnot(None),
+        Expense.installment_total.isnot(None),
+        Expense.installment_number < Expense.installment_total
+    ).all()
+    for expense in pending_installments:
+        db.add(Expense(
+            item_id=new_item.id,
+            amount=expense.amount,
+            description=expense.description,
+            payment_method=expense.payment_method,
+            currency=expense.currency,
+            paid_by=expense.paid_by,
+            split_type=expense.split_type,
+            assigned_to=expense.assigned_to,
+            selected_participants=expense.selected_participants,
+            date=datetime.utcnow(),
+            is_installment=True,
+            installment_number=expense.installment_number + 1,
+            installment_total=expense.installment_total,
+            installment_group_id=expense.installment_group_id,
+            is_settled=False
+        ))
+
+    item.next_item_id = new_item.id
+
+    db.commit()
+    db.refresh(new_item)
+    return new_item
 
 @app.delete("/api/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_item(
@@ -487,6 +625,10 @@ def delete_item(
 
     # Eliminar presupuestos personales del item antes de borrarlo
     db.query(UserItemBudget).filter(UserItemBudget.item_id == item_id).delete()
+
+    # Desenlazar la cadena mensual antes de borrar (evita violar el FK)
+    db.query(Item).filter(Item.previous_item_id == item_id).update({"previous_item_id": None})
+    db.query(Item).filter(Item.next_item_id == item_id).update({"next_item_id": None})
 
     db.delete(item)
     db.commit()
@@ -798,61 +940,6 @@ def create_expense(
     db.add(new_expense)
     db.commit()
     db.refresh(new_expense)
-
-    # Lógica de cuotas: auto-crear siguiente cuota en item destino
-    if (
-        expense.is_installment
-        and expense.installment_number is not None
-        and expense.installment_total is not None
-        and expense.installment_number < expense.installment_total
-    ):
-        next_num = expense.installment_number + 1
-
-        # Resolver item destino para siguiente cuota
-        if expense.next_item_id:
-            target_item = db.query(Item).filter(Item.id == expense.next_item_id).first()
-            if not target_item:
-                raise HTTPException(status_code=404, detail="Item destino no encontrado")
-            if target_item.owner_id != current_user.id and current_user not in target_item.participants:
-                raise HTTPException(status_code=403, detail="Sin acceso al item destino")
-        else:
-            # Crear nuevo item duplicando config del actual
-            target_item = Item(
-                name=f"{item.name} - Cuota {next_num}",
-                item_type=item.item_type,
-                owner_id=current_user.id
-            )
-            db.add(target_item)
-            db.flush()  # obtener ID sin commit completo
-            for p in item.participants:
-                if p.id != current_user.id:
-                    target_item.participants.append(p)
-
-        # Asignar group_id (el id del primer gasto sirve como ancla de la cadena)
-        group_id = new_expense.installment_group_id or new_expense.id
-        if not new_expense.installment_group_id:
-            new_expense.installment_group_id = group_id
-
-        # Crear siguiente cuota en el item destino
-        next_expense = Expense(
-            item_id=target_item.id,
-            amount=new_expense.amount,
-            description=new_expense.description,
-            payment_method=new_expense.payment_method,
-            currency=new_expense.currency,
-            paid_by=new_expense.paid_by,
-            split_type=new_expense.split_type,
-            assigned_to=new_expense.assigned_to,
-            selected_participants=new_expense.selected_participants,
-            date=new_expense.date,
-            is_installment=True,
-            installment_number=next_num,
-            installment_total=new_expense.installment_total,
-            installment_group_id=group_id,
-        )
-        db.add(next_expense)
-        db.commit()
-        db.refresh(new_expense)
 
     return new_expense
 

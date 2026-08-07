@@ -6,6 +6,7 @@ import {
   createExpense,
   updateExpense,
   deleteExpense,
+  createNextMonthItem,
   getMe,
   getItemParticipants,
   addItemParticipant,
@@ -16,7 +17,6 @@ import {
   createExpenseTemplate,
   updateExpenseTemplate,
   deleteExpenseTemplate,
-  getItems,
   toggleExpenseSettled,
   recategorizeExpense,
   setExpenseCategory,
@@ -108,7 +108,6 @@ function Expenses() {
   const [selectedManualCategory, setSelectedManualCategory] = useState('');
   const [summaryCategories, setSummaryCategories] = useState([]);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
-  const [userItems, setUserItems] = useState([]);
 
   const { isOnline, updatePendingCount } = useOffline();
 
@@ -124,8 +123,7 @@ function Expenses() {
     date: '',
     is_installment: false,
     installment_number: '',
-    installment_total: '',
-    next_item_id: ''
+    installment_total: ''
   });
 
   const parseBackendDate = (value) => {
@@ -209,22 +207,33 @@ function Expenses() {
 
   const fetchItemAndExpenses = async () => {
     try {
-      const [itemResponse, expensesResponse, budgetResponse, templatesResponse, itemsResponse] = await Promise.all([
+      const [itemResponse, expensesResponse, budgetResponse, templatesResponse] = await Promise.all([
         getItem(itemId),
         getExpenses(itemId),
         getUserBudget(itemId),
-        getExpenseTemplates(),
-        getItems()
+        getExpenseTemplates()
       ]);
       setItem(itemResponse.data);
       setExpenses(sortExpensesNewestFirst(expensesResponse.data));
       setUserBudget(budgetResponse.data);
       setExpenseTemplates(templatesResponse.data);
-      setUserItems(itemsResponse.data);
     } catch (error) {
       console.error('Error fetching data:', error);
       alert('Error al cargar los datos');
       navigate('/items');
+    }
+  };
+
+  const handleCreateNextMonth = async () => {
+    if (!window.confirm('¿Crear el siguiente mes? Se copiarán los participantes, el presupuesto y se trasladarán las cuotas pendientes.')) {
+      return;
+    }
+    try {
+      const response = await createNextMonthItem(itemId);
+      navigate(`/items/${response.data.id}/expenses`);
+    } catch (error) {
+      console.error('Error creating next month item:', error);
+      alert(error.response?.data?.detail || 'Error al crear el siguiente mes');
     }
   };
 
@@ -324,8 +333,7 @@ function Expenses() {
         date: toPeruLocalDatetime(expense.date),
         is_installment: expense.is_installment || false,
         installment_number: expense.installment_number || '',
-        installment_total: expense.installment_total || '',
-        next_item_id: ''
+        installment_total: expense.installment_total || ''
       });
     } else {
       setEditingExpense(null);
@@ -341,8 +349,7 @@ function Expenses() {
         date: toPeruLocalDatetime(),
         is_installment: false,
         installment_number: '',
-        installment_total: '',
-        next_item_id: ''
+        installment_total: ''
       });
     }
     setShowModal(true);
@@ -373,9 +380,6 @@ function Expenses() {
         data.installment_total = parseInt(formData.installment_total);
         if (editingExpense?.installment_group_id) {
           data.installment_group_id = editingExpense.installment_group_id;
-        }
-        if (!editingExpense && data.installment_number < data.installment_total) {
-          data.next_item_id = formData.next_item_id || null;
         }
       }
 
@@ -1021,6 +1025,21 @@ function Expenses() {
         <button onClick={() => navigate(`/items/${itemId}/summary`)} className="btn-summary-link">
           Resumen IA
         </button>
+        {item.previous_item_id && (
+          <button onClick={() => navigate(`/items/${item.previous_item_id}/expenses`)} className="btn-secondary">
+            ← Mes anterior
+          </button>
+        )}
+        {item.is_recurring && item.next_item_id && (
+          <button onClick={() => navigate(`/items/${item.next_item_id}/expenses`)} className="btn-secondary">
+            Mes siguiente →
+          </button>
+        )}
+        {item.is_recurring && !item.next_item_id && (
+          <button onClick={handleCreateNextMonth} className="btn-primary">
+            Crear siguiente mes →
+          </button>
+        )}
       </div>
       <div className="header">
         <div className="item-info">
@@ -1466,8 +1485,7 @@ function Expenses() {
                       ...formData,
                       is_installment: e.target.checked,
                       installment_number: e.target.checked ? (formData.installment_number || 1) : '',
-                      installment_total: e.target.checked ? formData.installment_total : '',
-                      next_item_id: ''
+                      installment_total: e.target.checked ? formData.installment_total : ''
                     })}
                   />
                   Pago en cuotas
@@ -1498,27 +1516,10 @@ function Expenses() {
                       />
                     </div>
                   </div>
-                  {!editingExpense && parseInt(formData.installment_number) < parseInt(formData.installment_total) && (
-                    <div className="form-group">
-                      <label>Próxima cuota va a</label>
-                      <select
-                        name="next_item_id"
-                        value={formData.next_item_id}
-                        onChange={handleChange}
-                      >
-                        <option value="">Crear item automáticamente</option>
-                        {userItems
-                          .filter(i => i.id !== itemId && !i.is_archived)
-                          .map(i => (
-                            <option key={i.id} value={i.id}>{i.name}</option>
-                          ))}
-                      </select>
-                      <small>
-                        {formData.next_item_id
-                          ? 'La siguiente cuota se creará en el item seleccionado'
-                          : `Se creará el item "${item?.name} - Cuota ${parseInt(formData.installment_number || 0) + 1}"`}
-                      </small>
-                    </div>
+                  {item?.is_recurring && !editingExpense && parseInt(formData.installment_number) < parseInt(formData.installment_total) && (
+                    <p className="installment-hint">
+                      Esta cuota se trasladará automáticamente al usar &quot;Crear siguiente mes&quot;.
+                    </p>
                   )}
                 </div>
               )}

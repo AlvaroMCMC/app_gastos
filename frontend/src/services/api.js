@@ -68,8 +68,8 @@ export const getItems = () => {
   return api.get('/items');
 };
 
-export const createItem = (name, item_type) => {
-  return api.post('/items', { name, item_type });
+export const createItem = (name, item_type, is_recurring = false) => {
+  return api.post('/items', { name, item_type, is_recurring });
 };
 
 export const getItem = (itemId) => {
@@ -78,6 +78,10 @@ export const getItem = (itemId) => {
 
 export const updateItem = (itemId, data) => {
   return api.put(`/items/${itemId}`, data);
+};
+
+export const createNextMonthItem = (itemId) => {
+  return api.post(`/items/${itemId}/next-month`);
 };
 
 export const deleteItem = (itemId) => {

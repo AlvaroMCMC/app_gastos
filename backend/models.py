@@ -39,6 +39,9 @@ class Item(Base):
     item_type = Column(String, nullable=False)  # "personal" o "shared"
     owner_id = Column(String, ForeignKey("users.id"), nullable=False)
     is_archived = Column(Boolean, nullable=False, default=False)
+    is_recurring = Column(Boolean, nullable=False, default=False)
+    previous_item_id = Column(String, ForeignKey("items.id"), nullable=True)
+    next_item_id = Column(String, ForeignKey("items.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relaciones
