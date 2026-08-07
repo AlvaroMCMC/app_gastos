@@ -1309,24 +1309,25 @@
 .filter-btn {
   padding: 6px 16px;
   border-radius: 20px;
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  background: transparent;
-  color: rgba(255, 255, 255, 0.7);
+  border: 1.5px solid #ccc;
+  background: #fff;
+  color: #555;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .filter-btn.active {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.7);
+  background: #667eea;
+  border-color: #667eea;
   color: white;
-  font-weight: 600;
 }
 
 .filter-btn:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.08);
-  color: white;
+  background: #f0f0f0;
+  border-color: #999;
+  color: #222;
 }
 
 .empty-filter-state {

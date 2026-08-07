@@ -307,7 +307,7 @@ def get_user_capital(user_id: str, db: Session) -> Dict[str, Dict[str, float]]:
 
             # Deudas pendientes (informativas, ya reflejadas en by_currency vía "share"):
             # lo que otros me deben cuando yo pagué de más, o lo que debo cuando pagó otro.
-            if item.item_type == "shared" and not expense.is_settled:
+            if item.item_type == "shared" and not item.is_archived and not expense.is_settled:
                 if expense.paid_by == user_id and share < expense.amount:
                     owed_to_me.setdefault(expense.currency, 0.0)
                     owed_to_me[expense.currency] += expense.amount - share
@@ -533,7 +533,7 @@ def get_items(
             Item.owner_id == current_user.id,
             Item.participants.any(User.id == current_user.id)
         )
-    ).all()
+    ).order_by(Item.created_at.desc()).all()
 
     # Agregar owner_email a cada item
     result = []
