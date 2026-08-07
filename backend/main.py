@@ -229,18 +229,20 @@ def ensure_item_access(item_id: str, current_user: User, db: Session) -> Item:
 
 def count_periodic_occurrences(start: date, day_of_month: int, until: date, end: date = None) -> int:
     """Cuenta cuántas veces ocurrió `day_of_month` entre `start` y `until` (inclusive),
-    cortando en `end` si se dio (ingreso periódico cancelado)."""
+    cortando en `end` si se dio (ingreso periódico cancelado). El mes en que se creó el
+    ingreso siempre cuenta completo, sin importar qué día de ese mes se haya registrado."""
     effective_until = min(until, end) if end else until
-    if start > effective_until:
+    effective_start = date(start.year, start.month, 1)
+    if effective_start > effective_until:
         return 0
 
     count = 0
-    year, month = start.year, start.month
+    year, month = effective_start.year, effective_start.month
     while (year, month) <= (effective_until.year, effective_until.month):
         last_day = calendar.monthrange(year, month)[1]
         occurrence_day = min(day_of_month, last_day)
         occurrence_date = date(year, month, occurrence_day)
-        if start <= occurrence_date <= effective_until:
+        if effective_start <= occurrence_date <= effective_until:
             count += 1
         if month == 12:
             year, month = year + 1, 1

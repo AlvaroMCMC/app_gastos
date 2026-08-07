@@ -41,6 +41,12 @@ def test_periodic_occurrences_respects_end_date():
     assert count_cut == 3  # ene, feb, mar
 
 
+def test_periodic_occurrences_counts_creation_month_even_if_day_already_passed():
+    # Regresión: crear el ingreso el dia 7 con day_of_month=1 debe contar
+    # el mes de creación (agosto) inmediatamente, no esperar a septiembre.
+    assert count_periodic_occurrences(date(2026, 8, 7), 1, date(2026, 8, 7)) == 1
+
+
 def test_periodic_occurrences_not_yet_this_month():
     today = date(2026, 8, 7)
     future_day_this_month = 20
@@ -54,6 +60,19 @@ def test_create_periodic_income_requires_day_of_month(client, auth_headers):
     headers = auth_headers()
     r = client.post("/api/capital/incomes", json={"income_type": "periodic", "amount": 100, "currency": "soles"}, headers=headers)
     assert r.status_code == 400
+
+
+def test_create_periodic_income_today_contributes_immediately(client, auth_headers):
+    """Regresión del caso reportado: crear un ingreso periódico hoy, con day_of_month
+    ya pasado dentro del mes actual, debe reflejarse de inmediato en el capital."""
+    headers = auth_headers()
+    r = client.post("/api/capital/incomes", json={
+        "income_type": "periodic", "amount": 7000, "currency": "soles", "day_of_month": 1
+    }, headers=headers)
+    assert r.status_code == 201
+
+    capital = client.get("/api/capital", headers=headers).json()["by_currency"]
+    assert capital.get("soles", 0) == 7000
 
 
 def test_create_one_time_income_contributes_immediately(client, auth_headers):
