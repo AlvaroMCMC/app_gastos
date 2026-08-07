@@ -166,6 +166,33 @@ def test_next_month_full_flow(client, auth_headers):
     assert expenses[0]["installment_number"] == 2
 
 
+def test_next_month_carries_recurring_expense_indefinitely(client, auth_headers):
+    headers = auth_headers()
+    item_id = client.post(
+        "/api/items", json={"name": "Agosto 2026 (pareja)", "item_type": "personal", "is_recurring": True}, headers=headers
+    ).json()["id"]
+    client.post(
+        f"/api/items/{item_id}/expenses",
+        json=_expense_payload(description="Netflix", amount=45, is_recurring=True),
+        headers=headers
+    )
+    # gasto normal, no debe trasladarse
+    client.post(f"/api/items/{item_id}/expenses", json=_expense_payload(description="Super"), headers=headers)
+
+    next_item = client.post(f"/api/items/{item_id}/next-month", headers=headers).json()
+    expenses = client.get(f"/api/items/{next_item['id']}/expenses", headers=headers).json()
+
+    assert len(expenses) == 1
+    assert expenses[0]["description"] == "Netflix"
+    assert expenses[0]["is_recurring"] is True
+
+    # el traslado debe repetirse indefinidamente: crear un tercer mes tambien lo arrastra
+    third_item = client.post(f"/api/items/{next_item['id']}/next-month", headers=headers).json()
+    third_expenses = client.get(f"/api/items/{third_item['id']}/expenses", headers=headers).json()
+    assert len(third_expenses) == 1
+    assert third_expenses[0]["description"] == "Netflix"
+
+
 def test_next_month_blocks_second_call(client, auth_headers):
     headers = auth_headers()
     item_id = client.post("/api/items", json={"name": "Agosto 2026", "item_type": "personal", "is_recurring": True}, headers=headers).json()["id"]

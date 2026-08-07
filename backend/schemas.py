@@ -76,6 +76,7 @@ class ExpenseCreate(BaseModel):
     installment_number: Optional[int] = None
     installment_total: Optional[int] = None
     installment_group_id: Optional[str] = None
+    is_recurring: bool = False
     is_settled: bool = False
 
 class ExpenseUpdate(BaseModel):
@@ -92,6 +93,7 @@ class ExpenseUpdate(BaseModel):
     installment_number: Optional[int] = None
     installment_total: Optional[int] = None
     installment_group_id: Optional[str] = None
+    is_recurring: Optional[bool] = None
     is_settled: Optional[bool] = None
 
 class ExpenseCategoryUpdate(BaseModel):
@@ -114,6 +116,7 @@ class ExpenseResponse(BaseModel):
     installment_number: Optional[int] = None
     installment_total: Optional[int] = None
     installment_group_id: Optional[str] = None
+    is_recurring: bool = False
     is_settled: bool = False
     ai_category: Optional[str] = None
     ai_confidence: Optional[float] = None

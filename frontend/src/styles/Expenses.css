@@ -1256,9 +1256,21 @@
 /* Installment badge */
 .installment-badge {
   font-size: 0.68rem;
-  background: rgba(100, 180, 255, 0.25);
-  color: #a8d8ff;
-  border: 1px solid rgba(100, 180, 255, 0.4);
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #90caf9;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.recurring-badge {
+  font-size: 0.68rem;
+  background: #f3e5f5;
+  color: #7b1fa2;
+  border: 1px solid #ce93d8;
   border-radius: 4px;
   padding: 2px 7px;
   font-weight: 600;

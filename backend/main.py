@@ -148,6 +148,7 @@ try:
             ("installment_number",   "INTEGER"),
             ("installment_total",    "INTEGER"),
             ("installment_group_id", "VARCHAR"),
+            ("is_recurring",         "BOOLEAN DEFAULT FALSE"),
             ("is_settled",           "BOOLEAN DEFAULT FALSE"),
             ("ai_category",          "VARCHAR"),
             ("ai_confidence",        "FLOAT"),
@@ -730,6 +731,27 @@ def create_next_month_item(
             is_settled=False
         ))
 
+    # Trasladar gastos recurrentes indefinidos (ej. Netflix, alquiler)
+    recurring_expenses = db.query(Expense).filter(
+        Expense.item_id == item.id,
+        Expense.is_recurring.is_(True)
+    ).all()
+    for expense in recurring_expenses:
+        db.add(Expense(
+            item_id=new_item.id,
+            amount=expense.amount,
+            description=expense.description,
+            payment_method=expense.payment_method,
+            currency=expense.currency,
+            paid_by=expense.paid_by,
+            split_type=expense.split_type,
+            assigned_to=expense.assigned_to,
+            selected_participants=expense.selected_participants,
+            date=datetime.utcnow(),
+            is_recurring=True,
+            is_settled=False
+        ))
+
     item.next_item_id = new_item.id
 
     db.commit()
@@ -1057,6 +1079,7 @@ def create_expense(
         installment_number=expense.installment_number,
         installment_total=expense.installment_total,
         installment_group_id=expense.installment_group_id,
+        is_recurring=expense.is_recurring,
         is_settled=expense.is_settled,
         ai_category=auto_category,
         ai_confidence=0.35,
@@ -1131,6 +1154,8 @@ def update_expense(
         expense.installment_total = expense_update.installment_total
     if expense_update.installment_group_id is not None:
         expense.installment_group_id = expense_update.installment_group_id
+    if expense_update.is_recurring is not None:
+        expense.is_recurring = expense_update.is_recurring
     if expense_update.is_settled is not None:
         expense.is_settled = expense_update.is_settled
 

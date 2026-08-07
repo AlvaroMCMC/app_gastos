@@ -189,7 +189,8 @@ function Expenses() {
     date: '',
     is_installment: false,
     installment_number: '',
-    installment_total: ''
+    installment_total: '',
+    is_recurring: false
   });
 
   const parseBackendDate = (value) => {
@@ -372,7 +373,8 @@ function Expenses() {
         date: toPeruLocalDatetime(expense.date),
         is_installment: expense.is_installment || false,
         installment_number: expense.installment_number || '',
-        installment_total: expense.installment_total || ''
+        installment_total: expense.installment_total || '',
+        is_recurring: expense.is_recurring || false
       });
     } else {
       setEditingExpense(null);
@@ -388,7 +390,8 @@ function Expenses() {
         date: toPeruLocalDatetime(),
         is_installment: false,
         installment_number: '',
-        installment_total: ''
+        installment_total: '',
+        is_recurring: false
       });
     }
     setShowModal(true);
@@ -421,6 +424,8 @@ function Expenses() {
           data.installment_group_id = editingExpense.installment_group_id;
         }
       }
+
+      data.is_recurring = formData.is_recurring;
 
       // Solo incluir campos de gastos compartidos si el item es compartido
       if (item?.item_type === 'shared') {
@@ -1363,6 +1368,9 @@ function Expenses() {
                           Cuota {expense.installment_number}/{expense.installment_total}
                         </span>
                       )}
+                      {expense.is_recurring && (
+                        <span className="recurring-badge">🔁 Recurrente</span>
+                      )}
                       {item?.item_type === 'shared' && participantIds.length > 0 && (
                         <div className="participant-initials">
                           {participantIds.map(participantId => (
@@ -1565,11 +1573,35 @@ function Expenses() {
                       ...formData,
                       is_installment: e.target.checked,
                       installment_number: e.target.checked ? (formData.installment_number || 1) : '',
-                      installment_total: e.target.checked ? formData.installment_total : ''
+                      installment_total: e.target.checked ? formData.installment_total : '',
+                      is_recurring: e.target.checked ? false : formData.is_recurring
                     })}
                   />
                   Pago en cuotas
                 </label>
+              </div>
+
+              {/* Gasto recurrente indefinido */}
+              <div className="form-group form-group-toggle">
+                <label className="toggle-label">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_recurring}
+                    onChange={e => setFormData({
+                      ...formData,
+                      is_recurring: e.target.checked,
+                      is_installment: e.target.checked ? false : formData.is_installment,
+                      installment_number: e.target.checked ? '' : formData.installment_number,
+                      installment_total: e.target.checked ? '' : formData.installment_total
+                    })}
+                  />
+                  🔁 Gasto recurrente (se repite cada mes)
+                </label>
+                {formData.is_recurring && item?.is_recurring && (
+                  <p className="installment-hint">
+                    Este gasto se trasladará automáticamente cada vez que uses &quot;Crear siguiente mes&quot;, sin fecha de fin.
+                  </p>
+                )}
               </div>
 
               {formData.is_installment && (

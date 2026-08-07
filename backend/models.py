@@ -76,6 +76,7 @@ class Expense(Base):
     installment_number = Column(Integer, nullable=True)
     installment_total = Column(Integer, nullable=True)
     installment_group_id = Column(String, nullable=True)
+    is_recurring = Column(Boolean, default=False)  # gasto recurrente indefinido (ej. Netflix, alquiler)
     is_settled = Column(Boolean, default=False)
     ai_category = Column(String, nullable=True)
     ai_confidence = Column(Float, nullable=True)
