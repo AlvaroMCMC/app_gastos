@@ -1404,6 +1404,15 @@ def generate_item_summary(
     }
 
 # ============================================
+# TIPO DE CAMBIO
+# ============================================
+
+@app.get("/api/exchange-rates")
+def get_exchange_rates(current_user: User = Depends(get_current_user)):
+    """Cuántos soles equivalen a 1 dólar y 1 real, según el tipo de cambio del día."""
+    return get_exchange_rates_to_pen()
+
+# ============================================
 # PERSONAL CAPITAL
 # ============================================
 

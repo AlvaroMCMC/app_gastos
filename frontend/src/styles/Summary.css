@@ -65,6 +65,12 @@
   color: #374151;
 }
 
+.currency-tabs-hint {
+  margin: 0 0 6px;
+  font-size: 0.85em;
+  color: #888;
+}
+
 .currency-tabs {
   display: flex;
   gap: 8px;

@@ -10,7 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { getItem, getItemSummary, generateItemSummary, getExpenses, getMe } from '../services/api';
+import { getItem, getItemSummary, generateItemSummary, getExpenses, getMe, getExchangeRates } from '../services/api';
 import '../styles/Summary.css';
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
@@ -33,6 +33,13 @@ const getCurrencySymbol = (currency) => {
   return symbols[currency] || 'S/';
 };
 
+// rates: cuántos soles equivalen a 1 dólar / 1 real (ver GET /api/exchange-rates)
+const convertAmount = (amount, fromCurrency, toCurrency, rates) => {
+  if (fromCurrency === toCurrency) return amount;
+  const inSoles = fromCurrency === 'soles' ? amount : amount * (rates[fromCurrency] || 1);
+  return toCurrency === 'soles' ? inSoles : inSoles / (rates[toCurrency] || 1);
+};
+
 function Summary() {
   const { itemId } = useParams();
   const navigate = useNavigate();
@@ -41,6 +48,7 @@ function Summary() {
   const [expenses, setExpenses] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedCurrency, setSelectedCurrency] = useState('');
+  const [rates, setRates] = useState({});
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
@@ -85,6 +93,10 @@ function Summary() {
       }
     };
     load();
+
+    getExchangeRates()
+      .then((response) => setRates(response.data || {}))
+      .catch((err) => console.error('Error fetching exchange rates:', err));
   }, [itemId]);
 
   const handleGenerate = async () => {
@@ -104,7 +116,19 @@ function Summary() {
   };
 
   const currencies = useMemo(() => Object.keys(summary?.categories_by_currency || {}), [summary]);
-  const currentStats = summary?.categories_by_currency?.[selectedCurrency] || [];
+
+  const currentStats = useMemo(() => {
+    if (!summary || !selectedCurrency) return [];
+    const merged = {};
+    Object.entries(summary.categories_by_currency || {}).forEach(([curr, stats]) => {
+      stats.forEach(({ category, total_amount, expense_count }) => {
+        if (!merged[category]) merged[category] = { category, total_amount: 0, expense_count: 0 };
+        merged[category].total_amount += convertAmount(total_amount, curr, selectedCurrency, rates);
+        merged[category].expense_count += expense_count;
+      });
+    });
+    return Object.values(merged).sort((a, b) => b.total_amount - a.total_amount);
+  }, [summary, selectedCurrency, rates]);
 
   const barData = useMemo(() => ({
     labels: currentStats.map((item) => item.category),
@@ -122,20 +146,17 @@ function Summary() {
 
     const totals = {};
     expenses
-      .filter((expense) =>
-        expense.currency === selectedCurrency &&
-        !(expense.split_type === 'assigned' && expense.assigned_to === currentUser?.id)
-      )
+      .filter((expense) => !(expense.split_type === 'assigned' && expense.assigned_to === currentUser?.id))
       .forEach((expense) => {
         const category = expense.ai_category || 'otros';
         if (!totals[category]) {
           totals[category] = { category, total_amount: 0, expense_count: 0 };
         }
-        totals[category].total_amount += expense.amount;
+        totals[category].total_amount += convertAmount(expense.amount, expense.currency, selectedCurrency, rates);
         totals[category].expense_count += 1;
       });
     return Object.values(totals);
-  }, [hidePersonalExpenses, currentStats, expenses, selectedCurrency, currentUser]);
+  }, [hidePersonalExpenses, currentStats, expenses, selectedCurrency, currentUser, rates]);
 
   const pieData = useMemo(() => ({
     labels: pieStats.map((item) => item.category),
@@ -177,6 +198,11 @@ function Summary() {
             <span>Generado: {new Date(`${summary.generated_at}Z`).toLocaleString('es-PE')}</span>
           </div>
 
+          {currencies.length > 1 && (
+            <p className="currency-tabs-hint">
+              Convertir todos los gastos a:
+            </p>
+          )}
           <div className="currency-tabs">
             {currencies.map((currency) => (
               <button

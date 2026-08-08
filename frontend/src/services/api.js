@@ -155,6 +155,11 @@ export const deleteCategory = (categoryId) => {
   return api.delete(`/categories/${categoryId}`);
 };
 
+// Exchange rates
+export const getExchangeRates = () => {
+  return api.get('/exchange-rates');
+};
+
 // Personal Capital
 export const getCapital = (convert) => {
   return api.get('/capital', { params: convert ? { convert } : {} });
