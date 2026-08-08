@@ -217,8 +217,30 @@ class UserIncomeResponse(BaseModel):
             datetime: lambda v: v.strftime('%Y-%m-%dT%H:%M:%S') if v else None
         }
 
+class CapitalIncomeDetail(BaseModel):
+    id: str
+    description: Optional[str] = None
+    income_type: str
+    currency: str
+    base_amount: float
+    occurrences: int
+    contributed_amount: float
+
+class CapitalItemDetail(BaseModel):
+    item_id: str
+    item_name: str
+    item_type: str
+    role: str
+    expense_count: int
+    amounts: Dict[str, float]
+
+class CapitalDetail(BaseModel):
+    incomes: List[CapitalIncomeDetail] = []
+    items: List[CapitalItemDetail] = []
+
 class CapitalResponse(BaseModel):
     by_currency: Dict[str, float]
     owed_to_me: Dict[str, float] = {}
     i_owe: Dict[str, float] = {}
     incomes: List[UserIncomeResponse]
+    detail: CapitalDetail

@@ -97,22 +97,27 @@ function Capital() {
   const [owedToMe, setOwedToMe] = useState({});
   const [iOwe, setIOwe] = useState({});
   const [incomes, setIncomes] = useState([]);
+  const [detail, setDetail] = useState({ incomes: [], items: [] });
+  const [showDetail, setShowDetail] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState('all'); // 'all' | 'soles' | 'dolares'
   const [incomeType, setIncomeType] = useState('one_time');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('soles');
   const [description, setDescription] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState('1');
 
-  const fetchCapital = async () => {
+  const fetchCapital = async (mode = viewMode) => {
     try {
-      const response = await getCapital();
+      const response = await getCapital(mode === 'all' ? null : mode);
       setByCurrency(response.data.by_currency || {});
       setOwedToMe(response.data.owed_to_me || {});
       setIOwe(response.data.i_owe || {});
       setIncomes(response.data.incomes || []);
+      setDetail(response.data.detail || { incomes: [], items: [] });
     } catch (error) {
       console.error('Error fetching capital:', error);
+      alert(error.response?.data?.detail || 'No se pudo obtener el tipo de cambio. Mostrando por moneda original.');
     } finally {
       setLoading(false);
     }
@@ -120,7 +125,13 @@ function Capital() {
 
   useEffect(() => {
     fetchCapital();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    fetchCapital(mode);
+  };
 
   const handleAddIncome = async (e) => {
     e.preventDefault();
@@ -183,6 +194,32 @@ function Capital() {
         <h1>Mi Presupuesto</h1>
       </div>
 
+      {currencies.length > 0 && (
+        <div className="toggle-group capital-view-toggle">
+          <button
+            type="button"
+            className={`toggle-btn ${viewMode === 'all' ? 'active' : ''}`}
+            onClick={() => handleViewModeChange('all')}
+          >
+            Todas
+          </button>
+          <button
+            type="button"
+            className={`toggle-btn ${viewMode === 'soles' ? 'active' : ''}`}
+            onClick={() => handleViewModeChange('soles')}
+          >
+            Solo Soles
+          </button>
+          <button
+            type="button"
+            className={`toggle-btn ${viewMode === 'dolares' ? 'active' : ''}`}
+            onClick={() => handleViewModeChange('dolares')}
+          >
+            Solo Dólares
+          </button>
+        </div>
+      )}
+
       <div className="capital-cards">
         {currencies.length === 0 ? (
           <p className="capital-empty">Aún no tienes ingresos ni gastos registrados.</p>
@@ -215,6 +252,75 @@ function Capital() {
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {currencies.length > 0 && (
+        <div className="detail-card">
+          <button
+            type="button"
+            className="btn-detail-toggle"
+            onClick={() => setShowDetail((v) => !v)}
+          >
+            {showDetail ? '▲ Ocultar' : '▼ Ver'} detalle de cómo se calcula el presupuesto
+          </button>
+
+          {showDetail && (
+            <div className="detail-content">
+              <div className="detail-section">
+                <h3>➕ Ingresos que suman</h3>
+                {detail.incomes.length === 0 ? (
+                  <p className="capital-empty">Sin ingresos registrados.</p>
+                ) : (
+                  <div className="detail-list">
+                    {detail.incomes.map((inc) => (
+                      <div key={inc.id} className="detail-row">
+                        <span className="detail-row-label">
+                          {inc.income_type === 'periodic' ? '🔁' : '•'} {inc.description || 'Sin descripción'}
+                        </span>
+                        <span className="detail-row-amount detail-positive">
+                          {inc.occurrences > 1
+                            ? `${getCurrencySymbol(inc.currency)}${inc.base_amount.toFixed(2)} x ${inc.occurrences} = `
+                            : ''}
+                          +{getCurrencySymbol(inc.currency)}{inc.contributed_amount.toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="detail-section">
+                <h3>➖ Gastos que restan (por item activo)</h3>
+                {detail.items.length === 0 ? (
+                  <p className="capital-empty">No tienes gastos en items activos.</p>
+                ) : (
+                  <div className="detail-list">
+                    {detail.items.map((item) => (
+                      <div key={item.item_id} className="detail-row detail-row-item">
+                        <span className="detail-row-label">
+                          {item.item_type === 'personal' ? '👤' : '👥'} {item.item_name}
+                          <span className="detail-row-sub">
+                            {' '}({item.item_type === 'personal' ? 'personal' : 'compartido'}
+                            {item.role === 'owner' ? ', dueño/a' : ', participante'}, {item.expense_count} gasto{item.expense_count !== 1 ? 's' : ''})
+                          </span>
+                        </span>
+                        <span className="detail-row-amount detail-negative">
+                          {Object.entries(item.amounts).map(([curr, amt]) => (
+                            <span key={curr}>-{getCurrencySymbol(curr)}{amt.toFixed(2)} </span>
+                          ))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <p className="detail-footnote">
+                Los items archivados no se incluyen — sus gastos ya quedaron reflejados en el capital inicial.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

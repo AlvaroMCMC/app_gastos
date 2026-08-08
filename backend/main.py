@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, text
 from datetime import timedelta, datetime, date
 import calendar
-from typing import List, Dict
+from typing import List, Dict, Optional
 import os
 import json
 import re
+import requests
 
 from database import engine, get_db, Base, DATABASE_URL, SessionLocal
 from models import User, Item, Expense, PendingInvitation, UserItemBudget, ItemSummary, Category, UserIncome
@@ -211,6 +212,48 @@ def ensure_item_access(item_id: str, current_user: User, db: Session) -> Item:
 
 # ============= PERSONAL CAPITAL =============
 
+_exchange_rate_cache = {"date": None, "rates": None}
+
+def get_exchange_rates_to_pen() -> Dict[str, float]:
+    """Devuelve cuántos soles equivalen a 1 dólar y 1 real, cacheado por día.
+    Fuente: open.er-api.com (gratis, sin API key)."""
+    today = date.today()
+    if _exchange_rate_cache["date"] == today and _exchange_rate_cache["rates"]:
+        return _exchange_rate_cache["rates"]
+
+    try:
+        response = requests.get("https://open.er-api.com/v6/latest/USD", timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        usd_to_pen = data["rates"]["PEN"]
+        usd_to_brl = data["rates"]["BRL"]
+        rates = {
+            "dolares": usd_to_pen,
+            "reales": usd_to_pen / usd_to_brl,
+        }
+        _exchange_rate_cache["date"] = today
+        _exchange_rate_cache["rates"] = rates
+        return rates
+    except Exception:
+        if _exchange_rate_cache["rates"]:
+            return _exchange_rate_cache["rates"]
+        raise HTTPException(status_code=503, detail="No se pudo obtener el tipo de cambio")
+
+def convert_currency_dict(amounts: Dict[str, float], target: str, rates: Dict[str, float]) -> Dict[str, float]:
+    """Convierte todos los montos de `amounts` a la moneda `target` ('soles' o 'dolares')."""
+    if not amounts:
+        return {}
+    total = 0.0
+    for currency, amount in amounts.items():
+        if currency == target:
+            total += amount
+        elif currency == "soles":
+            total += amount / rates["dolares"] if target == "dolares" else amount
+        else:
+            in_pen = amount * rates.get(currency, 1.0)
+            total += in_pen if target == "soles" else in_pen / rates["dolares"]
+    return {target: round(total, 2)}
+
 def count_periodic_occurrences(start: date, day_of_month: int, until: date, end: date = None) -> int:
     """Cuenta cuántas veces ocurrió `day_of_month` entre `start` y `until` (inclusive),
     cortando en `end` si se dio (ingreso periódico cancelado). El mes en que se creó el
@@ -253,10 +296,12 @@ def calculate_user_expense_share(expense: Expense, user_id: str, item: Item, par
         return 0.0
     return 0.0
 
-def get_user_capital(user_id: str, db: Session) -> Dict[str, Dict[str, float]]:
+def get_user_capital(user_id: str, db: Session) -> Dict:
     by_currency: Dict[str, float] = {}
     owed_to_me: Dict[str, float] = {}
     i_owe: Dict[str, float] = {}
+    income_details: List[Dict] = []
+    item_details: List[Dict] = []
     today = datetime.utcnow().date()
 
     incomes = db.query(UserIncome).filter(UserIncome.user_id == user_id).all()
@@ -267,9 +312,20 @@ def get_user_capital(user_id: str, db: Session) -> Dict[str, Dict[str, float]]:
                 income.date.date(), income.day_of_month, today,
                 income.end_date.date() if income.end_date else None
             )
-            by_currency[income.currency] += income.amount * occurrences
+            contributed = income.amount * occurrences
         else:
-            by_currency[income.currency] += income.amount
+            occurrences = 1
+            contributed = income.amount
+        by_currency[income.currency] += contributed
+        income_details.append({
+            "id": income.id,
+            "description": income.description,
+            "income_type": income.income_type,
+            "currency": income.currency,
+            "base_amount": round(income.amount, 2),
+            "occurrences": occurrences,
+            "contributed_amount": round(contributed, 2),
+        })
 
     items = db.query(Item).filter(
         or_(
@@ -279,19 +335,29 @@ def get_user_capital(user_id: str, db: Session) -> Dict[str, Dict[str, float]]:
     ).all()
 
     for item in items:
+        # Los items archivados quedan fuera del presupuesto vigente: sus gastos ya
+        # fueron absorbidos por el capital inicial registrado como ingreso puntual.
+        if item.is_archived:
+            continue
+
         participant_count = 1 + len({p.id for p in item.participants})
         pending_count = db.query(PendingInvitation).filter(PendingInvitation.item_id == item.id).count()
         participant_count += pending_count
 
+        item_amounts: Dict[str, float] = {}
+        expense_count = 0
         for expense in item.expenses:
             share = calculate_user_expense_share(expense, user_id, item, participant_count)
             if share:
                 by_currency.setdefault(expense.currency, 0.0)
                 by_currency[expense.currency] -= share
+                item_amounts.setdefault(expense.currency, 0.0)
+                item_amounts[expense.currency] += share
+                expense_count += 1
 
             # Deudas pendientes (informativas, ya reflejadas en by_currency vía "share"):
             # lo que otros me deben cuando yo pagué de más, o lo que debo cuando pagó otro.
-            if item.item_type == "shared" and not item.is_archived and not expense.is_settled:
+            if item.item_type == "shared" and not expense.is_settled:
                 if expense.paid_by == user_id and share < expense.amount:
                     owed_to_me.setdefault(expense.currency, 0.0)
                     owed_to_me[expense.currency] += expense.amount - share
@@ -299,10 +365,24 @@ def get_user_capital(user_id: str, db: Session) -> Dict[str, Dict[str, float]]:
                     i_owe.setdefault(expense.currency, 0.0)
                     i_owe[expense.currency] += share
 
+        if item_amounts:
+            item_details.append({
+                "item_id": item.id,
+                "item_name": item.name,
+                "item_type": item.item_type,
+                "role": "owner" if item.owner_id == user_id else "participant",
+                "expense_count": expense_count,
+                "amounts": {c: round(a, 2) for c, a in item_amounts.items()},
+            })
+
     return {
         "by_currency": {c: round(a, 2) for c, a in by_currency.items()},
         "owed_to_me": {c: round(a, 2) for c, a in owed_to_me.items()},
         "i_owe": {c: round(a, 2) for c, a in i_owe.items()},
+        "detail": {
+            "incomes": income_details,
+            "items": item_details,
+        },
     }
 
 def build_summary_payload(expenses: List[Expense], db: Session) -> Dict[str, List[Dict[str, float]]]:
@@ -1329,13 +1409,26 @@ def generate_item_summary(
 
 @app.get("/api/capital", response_model=CapitalResponse)
 def get_capital(
+    convert: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """convert: 'soles' o 'dolares' para colapsar todas las monedas en una sola
+    usando el tipo de cambio del día. Si se omite, devuelve cada moneda por separado."""
     capital = get_user_capital(current_user.id, db)
     incomes = db.query(UserIncome).filter(
         UserIncome.user_id == current_user.id
     ).order_by(UserIncome.created_at.desc()).all()
+
+    if convert in ("soles", "dolares"):
+        rates = get_exchange_rates_to_pen()
+        capital = {
+            "by_currency": convert_currency_dict(capital["by_currency"], convert, rates),
+            "owed_to_me": convert_currency_dict(capital["owed_to_me"], convert, rates),
+            "i_owe": convert_currency_dict(capital["i_owe"], convert, rates),
+            "detail": capital["detail"],
+        }
+
     return {**capital, "incomes": incomes}
 
 @app.post("/api/capital/incomes", response_model=UserIncomeResponse, status_code=status.HTTP_201_CREATED)

@@ -156,8 +156,8 @@ export const deleteCategory = (categoryId) => {
 };
 
 // Personal Capital
-export const getCapital = () => {
-  return api.get('/capital');
+export const getCapital = (convert) => {
+  return api.get('/capital', { params: convert ? { convert } : {} });
 };
 
 export const createIncome = (data) => {

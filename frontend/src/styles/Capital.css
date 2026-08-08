@@ -189,3 +189,82 @@
 .income-day-input {
   width: 60px;
 }
+
+.detail-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.btn-detail-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: #667eea;
+  font-size: 0.95em;
+  padding: 4px 0;
+  text-align: left;
+}
+
+.detail-content {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.detail-section h3 {
+  margin: 0 0 10px;
+  font-size: 0.95em;
+  color: #444;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 10px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.detail-row-label {
+  color: #333;
+}
+
+.detail-row-sub {
+  color: #888;
+  font-size: 0.85em;
+}
+
+.detail-row-amount {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.detail-positive {
+  color: #2e7d32;
+}
+
+.detail-negative {
+  color: #c62828;
+}
+
+.detail-footnote {
+  margin: 0;
+  font-size: 0.8em;
+  color: #888;
+  font-style: italic;
+}
