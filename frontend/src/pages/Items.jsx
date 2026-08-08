@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { getItems, createItem, deleteItem, getItemParticipants, getMe, updateItem } from '../services/api';
 import OfflineIndicator from '../components/OfflineIndicator';
+import { version as appVersion } from '../../package.json';
 import '../styles/Items.css';
 
 function Items() {
@@ -271,6 +272,8 @@ function Items() {
           </div>
         </div>
       )}
+
+      <p className="app-version">v{appVersion}</p>
     </div>
   );
 }
