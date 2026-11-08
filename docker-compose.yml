@@ -18,6 +18,27 @@ services:
       - default
 
   # ============================================
+  # EMAIL WORKER - recibos de Uber (Gmail IMAP) -> gastos
+  # ============================================
+  email-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["python", "-u", "email_worker.py"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      GMAIL_USER: ${GMAIL_USER}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
+      INGEST_USER_EMAIL: ${INGEST_USER_EMAIL:-}
+      EMAIL_POLL_SECONDS: ${EMAIL_POLL_SECONDS:-120}
+      EMAIL_LOOKBACK_DAYS: ${EMAIL_LOOKBACK_DAYS:-7}
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - default
+
+  # ============================================
   # FRONTEND - React + Nginx
   # ============================================
   frontend:

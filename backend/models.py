@@ -86,6 +86,15 @@ class Expense(Base):
     item = relationship("Item", back_populates="expenses")
     paid_by_user = relationship("User", back_populates="expenses", foreign_keys=[paid_by])
 
+class ProcessedEmail(Base):
+    """Correos ya procesados por el worker de ingesta, para no duplicar gastos."""
+    __tablename__ = "processed_emails"
+
+    message_id = Column(String, primary_key=True)
+    status = Column(String, nullable=False)  # "created" o "ignored"
+    expense_id = Column(String, nullable=True)
+    processed_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 class Category(Base):
     __tablename__ = "categories"
 
